@@ -1,0 +1,35 @@
+cabal-version:       2.2
+name:                hyborg
+version:             0
+synopsis:            borgbackup clone
+license:             AGPL-3.0-only
+author:              Sergey Alirzaev
+maintainer:          zl29ah@gmail.com
+-- category:            Network
+build-type:          Simple
+
+Source-repository head
+  type:              git
+  location:          https://github.com/l29ah/hyborg.git
+
+--Source-repository this
+--  type:              git
+--  location:          https://github.com/l29ah/hyborg.git
+--  tag:               0
+
+executable hyborg
+  main-is:             Main.hs
+  ghc-options:         -W -fno-warn-tabs -Werror=missing-fields -threaded
+  other-modules:
+                       RPC
+  build-depends:       base >=4.9 && <4.15,
+                       containers ^>= 0.6.2.1,
+                       bytestring ^>= 0.10.10,
+                       msgpack-binary ^>= 0.0.14,
+                       msgpack-types ^>= 0.0.4,
+                       text ^>= 1.2.3.2,
+                       conduit ^>= 1.3.2,
+                       conduit-extra ^>= 1.3.4,
+                       binary-conduit ^>= 1.3.1,
+                       process ^>= 1.6.8.2,
+  default-language:    Haskell2010

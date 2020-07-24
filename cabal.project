@@ -1,0 +1,4 @@
+packages:
+	./
+	./hs-msgpack-types
+	./hs-msgpack-binary
