@@ -109,3 +109,19 @@ get :: RPCHandle -> ChunkID -> IO ByteString
 get conn id = assert (B.length id == 32) $ do
 	sendRequest conn "get" $ M.fromList [("id", ObjectStr id)]
 	receiveResponse conn
+
+put :: RPCHandle -> ChunkID -> ByteString -> IO ()
+put conn id dat = assert (B.length id == 32) $ do
+	sendRequest conn "put" $ M.fromList
+		[ ("id", ObjectStr id)
+		, ("data", ObjectStr dat)
+		, ("wait", ObjectBool True)
+		]
+	void $ receiveResponse conn
+
+commit :: RPCHandle -> IO ()
+commit conn = do
+	sendRequest conn "commit" $ M.fromList
+		[ ("save_space", ObjectBool False)
+		]
+	void $ receiveResponse conn
