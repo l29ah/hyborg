@@ -12,7 +12,7 @@ import RPC
 main = do
 	conn <- openRPC
 	negotiate conn
-	open conn "/home/l29ah/projects/hyborg/test"
+	open conn "/home/l29ah/projects/hyborg/test" True
 	manifest <- get conn repoManifest
 	print =<< readManifest manifest
 	pure ()

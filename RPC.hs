@@ -94,14 +94,16 @@ negotiate conn = do
 	-- TODO check that the server supports our features
 	pure ()
 
-open :: RPCHandle -> Text -> IO ()
-open conn path = do
+-- |returns repository ID
+open :: RPCHandle -> ByteString -> Bool -> IO ByteString
+open conn path isWrite = do
 	sendRequest conn "open" $ M.fromList
-		[ ("path", path)
+		[ ("path", ObjectStr path)
+		, ("lock_wait", ObjectWord $ if isWrite then 1 else 0)
+		, ("lock", ObjectBool isWrite)
+		, ("exclusive", ObjectBool isWrite)
 		]
-	-- apparently it produces some 32byte ID
-	resp <- receiveResponse conn
-	pure ()
+	receiveResponse conn
 
 get :: RPCHandle -> ChunkID -> IO ByteString
 get conn id = assert (B.length id == 32) $ do

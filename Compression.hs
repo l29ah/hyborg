@@ -8,6 +8,7 @@ import qualified Data.ByteString as B
 
 decompress :: ByteString -> ByteString
 decompress d = let (compressionType, compressedData) = B.splitAt 2 d in
+	-- src/borg/compress.pyx
 	case B.unpack compressionType of
 		[1, 0] -> lz4Decompress compressedData
 

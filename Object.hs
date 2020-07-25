@@ -14,6 +14,7 @@ import Compression
 decrypt :: ByteString -> ByteString
 decrypt ciphertext = 
 	let (encryptionType, encryptedData) = B.splitAt 1 ciphertext in
+	-- src/borg/crypto/key.py
 	case B.head encryptionType of
 		0x02 -> decompress encryptedData
 
