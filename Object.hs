@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Object where
 
 import qualified Crypto.Hash.SHA256 as SHA256
@@ -5,7 +6,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.List
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import Data.Maybe
 import Data.MessagePack
 import Data.Word
@@ -41,3 +42,17 @@ decrypt dat =
 
 readManifest :: (MonadFail m) => ByteString -> m (Map ByteString Object)
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
+
+listArchives :: Map ByteString Object -> [(ByteString, ChunkID)]
+listArchives manifest = let ObjectMap archives = manifest ! "archives" in
+	map (\(ObjectStr name, ObjectMap info) -> (name, (\(ObjectStr s) -> s) $ fromJust $ lookup (ObjectStr "id") info)) archives
+
+getArchives :: RPCHandle -> Map ByteString Object -> IO ()
+getArchives conn manifest = do
+	let archiveIDs = map snd $ listArchives manifest
+	mapM_ (\aid -> do
+			adata <- get conn aid
+			archive :: Object <- unpack $ BL.fromStrict $ fromJust $ decrypt adata
+			print archive
+		) archiveIDs
+	

@@ -13,6 +13,7 @@ main = do
 	conn <- openRPC
 	negotiate conn
 	open conn "/home/l29ah/projects/hyborg/test" True
-	manifest <- get conn repoManifest
-	print =<< readManifest manifest
+	manifestData <- get conn repoManifest
+	manifest <- readManifest manifestData
+	getArchives conn manifest
 	pure ()

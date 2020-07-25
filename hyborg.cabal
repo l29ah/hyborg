@@ -24,6 +24,7 @@ executable hyborg
   other-modules:
                        RPC
                        Object
+                       Compression
   build-depends:       base >=4.9 && <4.15,
                        containers ^>= 0.6.2.1,
                        bytestring ^>= 0.10.10,
