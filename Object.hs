@@ -1,22 +1,43 @@
 module Object where
 
-import Data.Binary (decode)
-import Data.Binary.Get
+import qualified Crypto.Hash.SHA256 as SHA256
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.List
 import Data.Map (Map)
+import Data.Maybe
 import Data.MessagePack
+import Data.Word
 
 import RPC
 import Compression
 
-decrypt :: ByteString -> ByteString
-decrypt ciphertext = 
-	let (encryptionType, encryptedData) = B.splitAt 1 ciphertext in
+data CryptoMethod = CryptoMethod
+	{ cmID :: Word8
+	, cmDecrypt :: ByteString -> ByteString
+	, cmHashID :: ByteString -> ChunkID
+	}
+
+plaintext :: CryptoMethod
+plaintext = CryptoMethod
+	{ cmID = 0x02
+	, cmDecrypt = id
+	, cmHashID = SHA256.hash
+	}
+
+methods = [plaintext]
+
+getMethod :: Word8 -> Maybe CryptoMethod
+getMethod mid = find (\m -> mid == cmID m) methods
+
+decrypt :: ByteString -> Maybe ByteString
+decrypt dat = 
+	let (encryptionType, encryptedData) = B.splitAt 1 dat in
 	-- src/borg/crypto/key.py
-	case B.head encryptionType of
-		0x02 -> decompress encryptedData
+	do
+		method <- getMethod $ B.head encryptionType
+		pure $ decompress $ cmDecrypt method encryptedData
 
 readManifest :: (MonadFail m) => ByteString -> m (Map ByteString Object)
-readManifest = unpack . BL.fromStrict . decrypt
+readManifest = unpack . BL.fromStrict . fromJust . decrypt

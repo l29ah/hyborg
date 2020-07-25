@@ -36,4 +36,5 @@ executable hyborg
                        binary ^>= 0.8.8,
                        process ^>= 1.6.8.2,
                        lz4-hs ^>= 0.1.4.1,
+                       cryptohash-sha256 ^>= 0.11.101.0,
   default-language:    Haskell2010
