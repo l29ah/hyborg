@@ -1,20 +1,18 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
 
-import Data.ByteString (ByteString)
+import Data.Binary (decode)
+import Data.Binary.Get
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.Map (Map)
-import qualified Data.Map as M
 import Data.MessagePack
-import Data.MessagePack.Types
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Word
 
+import Object
 import RPC
 
 main = do
 	conn <- openRPC
 	negotiate conn
 	open conn "/home/l29ah/projects/hyborg/test"
-	get conn repoManifest >>= print
+	manifest <- get conn repoManifest
+	print $ runGet getManifest $ BL.fromStrict manifest
 	pure ()

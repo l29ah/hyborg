@@ -24,9 +24,9 @@ import GHC.Generics
 import System.Environment
 import System.Process
 
-type ObjectID = ByteString
+type ChunkID = ByteString
 
-repoManifest :: ObjectID
+repoManifest :: ChunkID
 repoManifest = B.pack $ replicate 32 0
 
 data RPCVersion = RPCVersion Word Word Word Int deriving Generic
@@ -55,7 +55,6 @@ openRPC = do
 	userRsh <- lookupEnv "BORG_RSH"
 	--let rsh = fromMaybe "ssh" userRsh
 	let rsh = fromJust userRsh
-	print rsh
 	stdin <- newChan
 	stdout <- newChan
 	stdinContents <- getChanContents stdin
@@ -92,7 +91,8 @@ negotiate :: RPCHandle -> IO ()
 negotiate conn = do
 	sendOldRequest conn "negotiate" $ M.fromList [("client_version", RPCVersion 1 1 13 (-1))]
 	resp <- (receiveOldResponse conn) :: IO (RPCOldResponse Object)
-	print resp
+	-- TODO check that the server supports our features
+	pure ()
 
 open :: RPCHandle -> Text -> IO ()
 open conn path = do
@@ -100,9 +100,10 @@ open conn path = do
 		[ ("path", path)
 		]
 	-- apparently it produces some 32byte ID
-	print =<< receiveResponse conn
+	resp <- receiveResponse conn
+	pure ()
 
-get :: RPCHandle -> ObjectID -> IO ByteString
+get :: RPCHandle -> ChunkID -> IO ByteString
 get conn id = assert (B.length id == 32) $ do
 	sendRequest conn "get" $ M.fromList [("id", ObjectStr id)]
 	receiveResponse conn
