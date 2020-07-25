@@ -35,4 +35,5 @@ executable hyborg
                        binary-conduit ^>= 1.3.1,
                        binary ^>= 0.8.8,
                        process ^>= 1.6.8.2,
+                       lz4-hs ^>= 0.1.4.1,
   default-language:    Haskell2010
