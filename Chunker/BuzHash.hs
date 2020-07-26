@@ -44,5 +44,8 @@ borgLookupTable = listArray (0, 0xff) [
 	0xc5ae37bb, 0xa76ce12a, 0x8150d8f3, 0x2ec29218, 0xa35f0984, 0x48c0647e, 0x0b5ff98c, 0x71893f7b
 	]
 
+seededBorgLookupTable :: Word32 -> LookupTable
+seededBorgLookupTable seed = amap (xor seed) borgLookupTable
+
 buzhash :: LookupTable -> ByteString -> Word32
 buzhash lut dat = fst $ B.foldl' (\(sum, len) byte -> (sum `xor` rotate (lut ! byte) len, len - 1)) (0, B.length dat - 1) dat
