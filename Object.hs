@@ -43,6 +43,8 @@ decrypt dat =
 readManifest :: (MonadFail m) => ByteString -> m (Map ByteString Object)
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
+type Archive = Map ByteString Object
+
 listArchives :: Map ByteString Object -> [(ByteString, ChunkID)]
 listArchives manifest = let ObjectMap archives = manifest ! "archives" in
 	map (\(ObjectStr name, ObjectMap info) -> (name, (\(ObjectStr s) -> s) $ fromJust $ lookup (ObjectStr "id") info)) archives
@@ -52,7 +54,14 @@ getArchives conn manifest = do
 	let archiveIDs = map snd $ listArchives manifest
 	mapM_ (\aid -> do
 			adata <- get conn aid
-			archive :: Object <- unpack $ BL.fromStrict $ fromJust $ decrypt adata
+			archive :: Archive <- unpack $ BL.fromStrict $ fromJust $ decrypt adata
 			print archive
+			items :: [ChunkID] <- fromObject $ archive ! "items"
+			mapM_ (getArchiveItem conn) items
 		) archiveIDs
 	
+getArchiveItem :: RPCHandle -> ChunkID -> IO ()
+getArchiveItem conn cid = do
+	idata <- get conn cid
+	item :: Object <- unpack $ BL.fromStrict $ fromJust $ decrypt idata
+	print item
