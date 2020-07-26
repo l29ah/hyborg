@@ -41,3 +41,26 @@ executable hyborg
                        cryptohash-sha256 ^>= 0.11.101.0,
                        array ^>= 0.5.4.0,
   default-language:    Haskell2010
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  ghc-options: -W -fno-warn-tabs
+  build-depends:       base >=4.9 && <4.15,
+                       hspec == 2.*,
+                       containers ^>= 0.6.2.1,
+                       bytestring ^>= 0.10.10,
+                       msgpack-binary ^>= 0.0.14,
+                       msgpack-types ^>= 0.0.4,
+                       text ^>= 1.2.3.2,
+                       conduit ^>= 1.3.2,
+                       conduit-extra ^>= 1.3.4,
+                       binary-conduit ^>= 1.3.1,
+                       binary ^>= 0.8.8,
+                       process ^>= 1.6.8.2,
+                       lz4-hs ^>= 0.1.4.1,
+                       cryptohash-sha256 ^>= 0.11.101.0,
+                       array ^>= 0.5.4.0,
+  other-modules:
+                       Chunker.BuzHash
+                       Chunker.BuzHashSpec
+  default-language: Haskell2010
