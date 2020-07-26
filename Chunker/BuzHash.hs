@@ -1,9 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 module Chunker.BuzHash where
 
 import Data.Array.Unboxed
 import Data.Bits
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import Data.Int
 import Data.Word
 
 type LookupTable = UArray Word8 Word32
@@ -47,8 +48,27 @@ borgLookupTable = listArray (0, 0xff) [
 seededBorgLookupTable :: Word32 -> LookupTable
 seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 
-buzhash :: LookupTable -> ByteString -> Word32
-buzhash lut dat = fst $ B.foldl' (\(sum, len) byte -> (sum `xor` rotate (lut ! byte) len, len - 1)) (0, B.length dat - 1) dat
+buzhash :: LookupTable -> BL.ByteString -> Word32
+buzhash lut dat = fst $ BL.foldl' (\(sum, len) byte -> (sum `xor` rotate (lut ! byte) len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
 buzhashUpdate lut sum remove add len = rotate sum 1 `xor` rotate (lut ! remove) len `xor` (lut ! add)
+
+roll	:: Word32
+	-> Int
+	-> Int
+	-> Int
+	-> Int64
+	-> BL.ByteString
+	-> BL.ByteString
+roll seed minExp maxExp maskBits window = BL.fromChunks . goFirst where
+	goFirst !bs = let dropMin = BL.drop minSize bs in go (buzhash lut (BL.take window dropMin)) minSize bs (BL.unpack dropMin) (BL.unpack $ BL.drop window dropMin)
+	go !sum !curLen !bs (x:xs) (y:ys)
+		| (sum .&. mask == 0) || curLen >= maxSize = let (l, r) = BL.splitAt curLen bs in BL.toStrict l : goFirst r
+		| otherwise = go sum' (curLen + 1) bs xs ys
+		where !sum' = buzhashUpdate lut sum x y (fromIntegral window)
+	go _ _ bs _ _ = [BL.toStrict bs]
+	mask = shiftL 1 maskBits - 1
+	minSize = shiftL 1 minExp
+	maxSize = shiftL 1 maxExp
+	lut = seededBorgLookupTable seed
