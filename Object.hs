@@ -7,6 +7,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.List
 import Data.Map (Map, (!))
+import qualified Control.Monad.Fail as Fail
 import Data.Maybe
 import Data.MessagePack
 import Data.Word
@@ -40,7 +41,7 @@ decrypt dat =
 		method <- getMethod $ B.head encryptionType
 		pure $ decompress $ cmDecrypt method encryptedData
 
-readManifest :: (MonadFail m) => ByteString -> m (Map ByteString Object)
+readManifest :: (Fail.MonadFail m) => ByteString -> m (Map ByteString Object)
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
 type Archive = Map ByteString Object
