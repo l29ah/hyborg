@@ -48,12 +48,17 @@ borgLookupTable = listArray (0, 0xff) [
 seededBorgLookupTable :: Word32 -> LookupTable
 seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 
+-- | Given an input `byte` at position `pos`, calculate a value that has to be
+-- `xor`ed into the hash.
+updater :: LookupTable -> Word8 -> Int -> Word32
+updater !lut !byte !pos = rotateL (lut `unsafeAt` fromIntegral byte) pos
+
 buzhash :: LookupTable -> BL.ByteString -> Word32
-buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` rotateL (lut `unsafeAt` fromIntegral byte) len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
+buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` updater lut byte len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
 {-# INLINE buzhash #-}
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
-buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` rotateL (lut `unsafeAt` fromIntegral remove) len `xor` (lut `unsafeAt` fromIntegral add)
+buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` updater lut remove len `xor` updater lut add 0
 {-# INLINE buzhashUpdate #-}
 
 chunkify	:: Word32
