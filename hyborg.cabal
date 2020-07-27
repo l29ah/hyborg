@@ -19,7 +19,7 @@ Source-repository head
 --  tag:               0
 
 common stuff
-  ghc-options:         -W -fno-warn-tabs -O2 -Werror=missing-fields -threaded -rtsopts
+  ghc-options:         -W -fno-warn-tabs -O2 -Werror=missing-fields -threaded -rtsopts "-with-rtsopts -N -qg"
   build-depends:       base >=4.9 && <4.15,
                        containers ^>= 0.6.2.1,
                        bytestring ^>= 0.10.10,
@@ -50,6 +50,7 @@ test-suite spec
   main-is: Spec.hs
   build-depends:
                        hspec == 2.*,
+--  build-tool-depends:  hspec-discover:hspec-discover == 2.*
   other-modules:
                        Chunker.BuzHash
                        Chunker.BuzHashSpec
@@ -59,5 +60,6 @@ benchmark benchmark
   main-is: Benchmark.hs
   build-depends:
                        criterion ^>= 1.5.6.2,
+                       parallel ^>= 3.2.2.0,
   other-modules:
                        Chunker.BuzHash

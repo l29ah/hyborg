@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Criterion.Main
 
+import Control.Parallel.Strategies
 import qualified Data.ByteString.Lazy as BL
 
 import Chunker.BuzHash
@@ -15,5 +16,6 @@ main = defaultMain
 	, bgroup "chunkify"
 		[ bench "default settings 1MB" $ nf (chunkify 0 19 23 21 4095) byteString1M
 		, bench "default settings 10MB" $ nf (chunkify 0 19 23 21 4095) byteString10M
+		, bench "default settings 5x10MB via 5 threads" $ nf (parMap rdeepseq (BL.length . chunkify 0 19 23 21 4095)) $ replicate 5 byteString10M
 		]
 	]
