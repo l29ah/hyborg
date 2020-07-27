@@ -17,6 +17,11 @@ spec = do
 			buzhash (seededBorgLookupTable 1) "abcdefghijklmnop" `shouldBe` buzhashUpdate (seededBorgLookupTable 1) (buzhash (seededBorgLookupTable 1) "Xabcdefghijklmno") (B.head "X") (B.head "p") 16
 			buzhash borgLookupTable "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" `shouldBe` 566521248
 	describe "chunkify" $ do
+		it "chunks over max size correctly" $ do
+			let bigdata = (BL.replicate (2^23 * 3 `div` 2) 0) <> "Y"
+			let chunked = BL.toChunks $ chunkify 0 1 23 2 2 $ bigdata
+			length chunked `shouldBe` 2
+			BL.fromChunks chunked `shouldBe` bigdata
 		it "passes borgbackup's test suite" $ do
 			BL.toChunks (chunkify 0 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fooba", "rboobaz", "fooba", "rboobaz", "fooba", "rboobaz"]
 			BL.toChunks (chunkify 1 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fo", "obarb", "oob", "azf", "oobarb", "oob", "azf", "oobarb", "oobaz"]
