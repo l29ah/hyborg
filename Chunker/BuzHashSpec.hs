@@ -24,6 +24,7 @@ spec = do
 			BL.fromChunks chunked `shouldBe` bigdata
 		it "chunks near max size like borgbackup's impl" $ do
 			BL.toChunks (chunkify 2 1 3 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foo", "ba", "rboobazf", "oo", "ba", "rboobazf", "oo", "ba", "rboobaz"]
+			BL.toChunks (chunkify 2 1 4 2 4 (stimes 3 "foobarboobaz")) `shouldBe` ["fo", "obarboobazfoobar", "boobazfo", "obarboobaz"]
 		it "passes borgbackup's test suite" $ do
 			BL.toChunks (chunkify 0 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fooba", "rboobaz", "fooba", "rboobaz", "fooba", "rboobaz"]
 			BL.toChunks (chunkify 1 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fo", "obarb", "oob", "azf", "oobarb", "oob", "azf", "oobarb", "oobaz"]
