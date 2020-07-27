@@ -16,6 +16,9 @@ main = defaultMain
 		[ bench "10MB" $ nf (buzhash borgLookupTable) byteString10M
 		, bench "5x10MB via 5 threads" $ nf (threadify 5 $ buzhash borgLookupTable) byteString10M
 		]
+	, bgroup "buzhashUpdate"
+		[ bench "" $ nf (buzhashUpdate borgLookupTable 0x12345678 0x90 0x12) 0x3
+		]
 	, bgroup "chunkify"
 		[ bench "default settings 1MB" $ nf (chunkify 0 19 23 21 4095) byteString1M
 		, bench "default settings 10MB" $ nf (chunkify 0 19 23 21 4095) byteString10M
