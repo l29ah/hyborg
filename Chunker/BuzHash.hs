@@ -53,7 +53,7 @@ buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` rotateL (lut
 {-# INLINE buzhash #-}
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
-buzhashUpdate lut sum remove add len = rotate sum 1 `xor` rotate (lut `unsafeAt` fromIntegral remove) len `xor` (lut `unsafeAt` fromIntegral add)
+buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` rotateL (lut `unsafeAt` fromIntegral remove) len `xor` (lut `unsafeAt` fromIntegral add)
 {-# INLINE buzhashUpdate #-}
 
 chunkify	:: Word32
