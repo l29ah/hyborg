@@ -50,9 +50,11 @@ seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 
 buzhash :: LookupTable -> BL.ByteString -> Word32
 buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` rotateL (lut `unsafeAt` fromIntegral byte) len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
+{-# INLINE buzhash #-}
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
 buzhashUpdate lut sum remove add len = rotate sum 1 `xor` rotate (lut ! remove) len `xor` (lut ! add)
+{-# INLINE buzhashUpdate #-}
 
 chunkify	:: Word32
 		-> Int
