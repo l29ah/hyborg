@@ -71,6 +71,10 @@ buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
 buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` updater lut remove len `xor` updater lut add 0
 {-# INLINE buzhashUpdate #-}
 
+-- This function performs content-based slicing using a rolling hash (buzhash):
+-- - theory: https://en.wikipedia.org/wiki/Rolling_hash#Content-based_slicing_using_a_rolling_hash
+-- - some details on Borg's implementation:
+--   https://borgbackup.readthedocs.io/en/stable/internals/data-structures.html#chunker-details
 chunkify	:: Word32
 		-> Int
 		-> Int
