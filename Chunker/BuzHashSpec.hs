@@ -19,19 +19,19 @@ spec = do
 	describe "chunkify" $ do
 		it "chunks over max size correctly" $ do
 			let bigdata = (BL.replicate (2^23 * 3 `div` 2) 0) <> "Y"
-			let chunked = BL.toChunks $ chunkify 0 1 23 2 2 $ bigdata
+			let chunked = chunkify 0 1 23 2 2 $ bigdata
 			length chunked `shouldBe` 2
-			BL.fromChunks chunked `shouldBe` bigdata
+			BL.concat chunked `shouldBe` bigdata
 		it "chunks near max size like borgbackup's impl" $ do
-			BL.toChunks (chunkify 2 1 3 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foo", "ba", "rboobazf", "oo", "ba", "rboobazf", "oo", "ba", "rboobaz"]
-			BL.toChunks (chunkify 2 1 4 2 4 (stimes 3 "foobarboobaz")) `shouldBe` ["fo", "obarboobazfoobar", "boobazfo", "obarboobaz"]
+			chunkify 2 1 3 2 3 (stimes 3 "foobarboobaz") `shouldBe` ["foo", "ba", "rboobazf", "oo", "ba", "rboobazf", "oo", "ba", "rboobaz"]
+			chunkify 2 1 4 2 4 (stimes 3 "foobarboobaz") `shouldBe` ["fo", "obarboobazfoobar", "boobazfo", "obarboobaz"]
 		it "passes borgbackup's test suite" $ do
-			BL.toChunks (chunkify 0 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fooba", "rboobaz", "fooba", "rboobaz", "fooba", "rboobaz"]
-			BL.toChunks (chunkify 1 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["fo", "obarb", "oob", "azf", "oobarb", "oob", "azf", "oobarb", "oobaz"]
-			BL.toChunks (chunkify 2 1 23 2 2 (stimes 3 "foobarboobaz")) `shouldBe` ["foob", "ar", "boobazfoob", "ar", "boobazfoob", "ar", "boobaz"]
-			BL.toChunks (chunkify 0 2 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` [stimes 3 "foobarboobaz"]
-			BL.toChunks (chunkify 1 2 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foobar", "boobazfo", "obar", "boobazfo", "obar", "boobaz"]
-			BL.toChunks (chunkify 2 2 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foob", "arboobaz", "foob", "arboobaz", "foob", "arboobaz"]
-			BL.toChunks (chunkify 0 3 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` [stimes 3 "foobarboobaz"]
-			BL.toChunks (chunkify 1 3 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foobarbo", "obazfoobar", "boobazfo", "obarboobaz"]
-			BL.toChunks (chunkify 2 3 23 2 3 (stimes 3 "foobarboobaz")) `shouldBe` ["foobarboobaz", "foobarboobaz", "foobarboobaz"]
+			chunkify 0 1 23 2 2 (stimes 3 "foobarboobaz") `shouldBe` ["fooba", "rboobaz", "fooba", "rboobaz", "fooba", "rboobaz"]
+			chunkify 1 1 23 2 2 (stimes 3 "foobarboobaz") `shouldBe` ["fo", "obarb", "oob", "azf", "oobarb", "oob", "azf", "oobarb", "oobaz"]
+			chunkify 2 1 23 2 2 (stimes 3 "foobarboobaz") `shouldBe` ["foob", "ar", "boobazfoob", "ar", "boobazfoob", "ar", "boobaz"]
+			chunkify 0 2 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` [stimes 3 "foobarboobaz"]
+			chunkify 1 2 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` ["foobar", "boobazfo", "obar", "boobazfo", "obar", "boobaz"]
+			chunkify 2 2 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` ["foob", "arboobaz", "foob", "arboobaz", "foob", "arboobaz"]
+			chunkify 0 3 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` [stimes 3 "foobarboobaz"]
+			chunkify 1 3 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` ["foobarbo", "obazfoobar", "boobazfo", "obarboobaz"]
+			chunkify 2 3 23 2 3 (stimes 3 "foobarboobaz") `shouldBe` ["foobarboobaz", "foobarboobaz", "foobarboobaz"]
