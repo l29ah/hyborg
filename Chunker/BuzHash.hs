@@ -2,7 +2,6 @@
 module Chunker.BuzHash where
 
 import Data.Array.Base
-import Data.Array.Unboxed
 import Data.Bits
 import qualified Data.ByteString.Lazy as BL
 import Data.Int
@@ -50,7 +49,7 @@ seededBorgLookupTable :: Word32 -> LookupTable
 seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 
 buzhash :: LookupTable -> BL.ByteString -> Word32
-buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` rotate (lut `unsafeAt` fromIntegral byte) len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
+buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` rotateL (lut `unsafeAt` fromIntegral byte) len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
 buzhashUpdate lut sum remove add len = rotate sum 1 `xor` rotate (lut ! remove) len `xor` (lut ! add)
