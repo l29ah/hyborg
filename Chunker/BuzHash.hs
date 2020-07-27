@@ -79,13 +79,24 @@ chunkify	:: Word32
 		-> BL.ByteString
 		-> [BL.ByteString]
 chunkify seed minExp maxExp maskBits window = goFirst where
-	goFirst !bs = let dropMin = BL.drop minSize bs in go (buzhash lut (BL.take window dropMin)) minSize bs (BL.unpack dropMin) (BL.unpack $ BL.drop window dropMin)
+	goFirst !bs =
+		let dropMin = BL.drop minSize bs
+		in go
+				(buzhash lut (BL.take window dropMin))
+				minSize
+				bs
+				(BL.unpack dropMin)
+				(BL.unpack $ BL.drop window dropMin)
+
 	go !sum !curLen !bs (x:xs) (y:ys)
-		| ((sum .&. mask == 0) && curLen < almostMaxSize) || curLen >= maxSize = let (l, r) = BL.splitAt curLen bs in l : goFirst r
+		| ((sum .&. mask == 0) && curLen < almostMaxSize) || curLen >= maxSize =
+				let (l, r) = BL.splitAt curLen bs
+				in l : goFirst r
 		| otherwise = go sum' (curLen + 1) bs xs ys
 		where
 			!sum' = buzhashUpdate lut sum x y (fromIntegral window)
 	go _ _ bs _ _ = [bs]
+
 	mask = shiftL 1 maskBits - 1
 	minSize = shiftL 1 minExp
 	maxSize = shiftL 1 maxExp
