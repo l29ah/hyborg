@@ -20,7 +20,7 @@ Source-repository head
 
 executable hyborg
   main-is:             Main.hs
-  ghc-options:         -W -fno-warn-tabs -Werror=missing-fields -threaded
+  ghc-options:         -W -fno-warn-tabs -O2 -Werror=missing-fields -threaded
   other-modules:
                        RPC
                        Object
@@ -44,7 +44,7 @@ executable hyborg
 test-suite spec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
-  ghc-options: -W -fno-warn-tabs
+  ghc-options: -W -fno-warn-tabs -O2
   build-depends:       base >=4.9 && <4.15,
                        hspec == 2.*,
                        containers ^>= 0.6.2.1,
@@ -67,7 +67,7 @@ test-suite spec
 benchmark benchmark
   type: exitcode-stdio-1.0
   main-is: Benchmark.hs
-  ghc-options: -W -fno-warn-tabs
+  ghc-options: -W -fno-warn-tabs -O2
   build-depends:       base >=4.9 && <4.15,
                        criterion ^>= 1.5.6.2,
                        containers ^>= 0.6.2.1,
