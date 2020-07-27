@@ -66,11 +66,13 @@ chunkify	:: Word32
 chunkify seed minExp maxExp maskBits window = BL.fromChunks . goFirst where
 	goFirst !bs = let dropMin = BL.drop minSize bs in go (buzhash lut (BL.take window dropMin)) minSize bs (BL.unpack dropMin) (BL.unpack $ BL.drop window dropMin)
 	go !sum !curLen !bs (x:xs) (y:ys)
-		| (sum .&. mask == 0) || curLen >= maxSize = let (l, r) = BL.splitAt curLen bs in BL.toStrict l : goFirst r
+		| ((sum .&. mask == 0) && curLen < almostMaxSize) || curLen >= maxSize = let (l, r) = BL.splitAt curLen bs in BL.toStrict l : goFirst r
 		| otherwise = go sum' (curLen + 1) bs xs ys
-		where !sum' = buzhashUpdate lut sum x y (fromIntegral window)
+		where
+			!sum' = buzhashUpdate lut sum x y (fromIntegral window)
 	go _ _ bs _ _ = [BL.toStrict bs]
 	mask = shiftL 1 maskBits - 1
 	minSize = shiftL 1 minExp
 	maxSize = shiftL 1 maxExp
+	almostMaxSize = maxSize - window	-- borgbackup's chunker skips to the maximum size when it gets close to it
 	lut = seededBorgLookupTable seed
