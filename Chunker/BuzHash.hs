@@ -53,8 +53,18 @@ seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 updater :: LookupTable -> Word8 -> Int -> Word32
 updater !lut !byte !pos = rotateL (lut `unsafeAt` fromIntegral byte) pos
 
+-- | Strict, packed accumulator for `buzhash`. This speeds up the function by
+-- a factor of four.
+data Acc1 = Acc1 !Word32 !Int
+
 buzhash :: LookupTable -> BL.ByteString -> Word32
-buzhash lut dat = fst $ BL.foldl' (\(!sum, !len) byte -> (sum `xor` updater lut byte len, len - 1)) (0, fromIntegral (BL.length dat) - 1) dat
+buzhash lut dat =
+	let Acc1 result _ =
+				BL.foldl'
+				(\(Acc1 !sum !len) byte -> Acc1 (sum `xor` updater lut byte len) (len - 1))
+				(Acc1 0 (fromIntegral (BL.length dat) - 1))
+				dat
+	in result
 {-# INLINE buzhash #-}
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
