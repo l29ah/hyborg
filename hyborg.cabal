@@ -50,7 +50,7 @@ test-suite spec
   main-is: Spec.hs
   build-depends:
                        hspec == 2.*,
---  build-tool-depends:  hspec-discover:hspec-discover == 2.*
+  build-tool-depends:  hspec-discover:hspec-discover == 2.*
   other-modules:
                        Chunker.BuzHash
                        Chunker.BuzHashSpec
