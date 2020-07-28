@@ -1,13 +1,18 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, QuasiQuotes, TemplateHaskell #-}
 module Chunker.BuzHash where
 
 import Data.Array.Base
+import Data.Array.CArray
 import Data.Bits
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.Int
 import Data.Word
+import qualified Language.C.Inline as C
+import qualified Language.C.Inline.Unsafe as CU
+import System.IO.Unsafe
 
-type LookupTable = UArray Word8 Word32
+type LookupTable = CArray Word8 Word32
 
 borgLookupTable :: LookupTable
 borgLookupTable = listArray (0, 0xff) [
@@ -48,6 +53,10 @@ borgLookupTable = listArray (0, 0xff) [
 seededBorgLookupTable :: Word32 -> LookupTable
 seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 
+C.context (C.baseCtx <> C.bsCtx)
+C.include "<stdint.h>"
+C.verbatim "#define BARREL_SHIFT(v, shift) ( ((v) << (shift)) | ((v) >> ((32 - (shift)) & 0x1f)) )"
+
 -- | Given an input `byte` at position `pos`, calculate a value that has to be
 -- `xor`ed into the hash.
 updater :: LookupTable -> Word8 -> Int -> Word32
@@ -67,9 +76,31 @@ buzhash lut dat =
 	in result
 {-# INLINE buzhash #-}
 
-buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
-buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` updater lut remove len `xor` updater lut add 0
+buzhashC :: LookupTable -> B.ByteString -> Word32
+buzhashC lut dat = unsafePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
+	uint32_t i;
+	uint32_t sum = 0, imod;
+	uint8_t *data = $bs-ptr:dat;
+	for (i = $bs-len:dat - 1; i > 0; i--) {
+		imod = i & 0x1f;
+		sum ^= BARREL_SHIFT($(uint32_t *h)[*data], imod);
+		data++;
+	}
+	return sum^$(uint32_t *h)[*data];
+	}|]
+{-# INLINE buzhashC #-}
+
+buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Word32 -> Word32
+buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` rotateL (lut `unsafeAt` fromIntegral remove) (fromIntegral len) `xor` (lut `unsafeAt` fromIntegral add)
 {-# INLINE buzhashUpdate #-}
+
+buzhashUpdateC :: LookupTable -> Word32 -> Word8 -> Word8 -> Word32 -> Word32
+buzhashUpdateC lut sum remove add len = unsafePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
+	uint32_t lenmod = $(uint32_t len) & 0x1f;
+	uint32_t *h = $(uint32_t *h);
+	return BARREL_SHIFT($(uint32_t sum), 1) ^ BARREL_SHIFT(h[$(uint8_t remove)], lenmod) ^ h[$(uint8_t add)];
+	}|]
+{-# INLINE buzhashUpdateC #-}
 
 -- This function performs content-based slicing using a rolling hash (buzhash):
 -- - theory: https://en.wikipedia.org/wiki/Rolling_hash#Content-based_slicing_using_a_rolling_hash
