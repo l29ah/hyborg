@@ -2,14 +2,17 @@
 import Criterion.Main
 
 import Control.Parallel.Strategies
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
 import Chunker.BuzHash
 
 threadify threads computation = parMap rdeepseq computation . replicate threads
 
-byteString1M	= BL.take 1000000 $ BL.iterate (+ 1) 0
-byteString10M	= BL.take 10000000 $ BL.iterate (+ 1) 0
+genByteString len = BL.fromStrict $ B.pack $ take len $ iterate (+ 1) 0
+
+byteString1M	= genByteString 1000000
+byteString10M	= genByteString 10000000
 
 main = defaultMain
 	[ bgroup "buzhash"
