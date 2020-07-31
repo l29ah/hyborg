@@ -18,7 +18,8 @@ spec = do
 			buzhash borgLookupTable "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" `shouldBe` 566521248
 	describe "chunkify" $ do
 		it "chunks over max size correctly" $ do
-			let bigdata = (BL.replicate (2^23 * 3 `div` 2) 0) <> "Y"
+			let bigdata = BL.fromStrict $ BL.toStrict $	-- avoid looping over 3000 chunks
+				(BL.replicate (2^23 * 3 `div` 2) 0) <> "Y"
 			let chunked = chunkify 0 1 23 2 2 $ bigdata
 			length chunked `shouldBe` 2
 			BL.concat chunked `shouldBe` bigdata
