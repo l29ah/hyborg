@@ -89,17 +89,18 @@ chunkify seed minExp maxExp maskBits window = goFirst where
 				(buzhash lut (BL.take window dropMin))
 				minSize
 				bs
-				(BL.unpack dropMin)
-				(BL.unpack $ BL.drop window dropMin)
+				(BL.drop window bs)
 
-	go !sum !curLen !bs (x:xs) (y:ys)
+	go !sum !curLen !bs !ybs
+		| BL.null $ BL.drop curLen ybs = [bs]
 		| ((sum .&. mask == 0) && curLen < almostMaxSize) || curLen >= maxSize =
 				let (l, r) = BL.splitAt curLen bs
 				in l : goFirst r
-		| otherwise = go sum' (curLen + 1) bs xs ys
-		where
-			!sum' = buzhashUpdate lut sum x y (fromIntegral window)
-	go _ _ bs _ _ = [bs]
+		| otherwise = go
+			(buzhashUpdate lut sum (bs `BL.index` curLen) (ybs `BL.index` curLen) (fromIntegral window))
+			(curLen + 1)
+			bs
+			ybs
 
 	mask = shiftL 1 maskBits - 1
 	minSize = shiftL 1 minExp
