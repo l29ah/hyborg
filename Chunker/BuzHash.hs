@@ -77,7 +77,7 @@ buzhash lut dat =
 {-# INLINE buzhash #-}
 
 buzhashC :: LookupTable -> B.ByteString -> Word32
-buzhashC lut dat = unsafePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
+buzhashC lut dat = unsafeDupablePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
 	uint32_t i;
 	uint32_t sum = 0, imod;
 	uint8_t *data = $bs-ptr:dat;
@@ -95,7 +95,7 @@ buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` rotateL (lut `unsafeA
 {-# INLINE buzhashUpdate #-}
 
 buzhashUpdateC :: LookupTable -> Word32 -> Word8 -> Word8 -> Word32 -> Word32
-buzhashUpdateC lut sum remove add len = unsafePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
+buzhashUpdateC lut sum remove add len = unsafeDupablePerformIO $ withCArray lut $ \h -> [CU.block| uint32_t {
 	uint32_t lenmod = $(uint32_t len) & 0x1f;
 	uint32_t *h = $(uint32_t *h);
 	return BARREL_SHIFT($(uint32_t sum), 1) ^ BARREL_SHIFT(h[$(uint8_t remove)], lenmod) ^ h[$(uint8_t add)];
