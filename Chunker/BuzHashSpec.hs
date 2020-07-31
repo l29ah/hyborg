@@ -16,6 +16,12 @@ spec = do
 			buzhash (seededBorgLookupTable 1) "abcdefghijklmnop" `shouldBe` 3795400502
 			buzhash (seededBorgLookupTable 1) "abcdefghijklmnop" `shouldBe` buzhashUpdate (seededBorgLookupTable 1) (buzhash (seededBorgLookupTable 1) "Xabcdefghijklmno") (B.head "X") (B.head "p") 16
 			buzhash borgLookupTable "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" `shouldBe` 566521248
+	describe "buzhashC" $ do
+		it "passes borgbackup's test suite" $ do
+			buzhashC borgLookupTable "abcdefghijklmnop" `shouldBe` 3795437769
+			buzhashC (seededBorgLookupTable 1) "abcdefghijklmnop" `shouldBe` 3795400502
+			buzhashC (seededBorgLookupTable 1) "abcdefghijklmnop" `shouldBe` buzhashUpdate (seededBorgLookupTable 1) (buzhash (seededBorgLookupTable 1) "Xabcdefghijklmno") (B.head "X") (B.head "p") 16
+			buzhashC borgLookupTable "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" `shouldBe` 566521248
 	describe "chunkify" $ do
 		it "chunks over max size correctly" $ do
 			let bigdata = BL.fromStrict $ BL.toStrict $	-- avoid looping over 3000 chunks
