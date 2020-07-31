@@ -63,3 +63,4 @@ benchmark benchmark
                        parallel ^>= 3.2.2.0,
   other-modules:
                        Chunker.BuzHash
+                       Chunker.Fixed
