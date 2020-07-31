@@ -6,6 +6,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
 import Chunker.BuzHash
+import qualified Chunker.Fixed as Fix
 
 threadify threads computation = parMap rdeepseq computation . replicate threads
 
@@ -26,5 +27,9 @@ main = defaultMain
 		[ bench "default settings 1MB" $ nf (chunkify 0 19 23 21 4095) byteString1M
 		, bench "default settings 10MB" $ nf (chunkify 0 19 23 21 4095) byteString10M
 		, bench "default settings 5x10MB via 5 threads" $ nf (threadify 5 $ length . chunkify 0 19 23 21 4095) byteString10M
+		]
+	, bgroup "fixed chunkify"
+		[ bench "1MiB chunks, 10MB" $ nf (Fix.chunkify (2^20)) byteString10M
+		, bench "1MiB chunks, 5x10MB via 5 threads" $ nf (threadify 5 $ length . Fix.chunkify (2^20)) byteString10M
 		]
 	]
