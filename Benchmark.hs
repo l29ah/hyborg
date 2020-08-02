@@ -7,13 +7,16 @@ import qualified Data.ByteString.Lazy as BL
 
 import Chunker.BuzHash
 import qualified Chunker.Fixed as Fix
+import Compression
 
 threadify threads computation = parMap rdeepseq computation . replicate threads
 
-genByteString len = BL.fromStrict $ B.pack $ take len $ iterate (+ 1) 0
+genByteStringS len = B.pack $ take len $ iterate (+ 1) 0
+genByteString = BL.fromStrict . genByteStringS
 
 byteString1M	= genByteString 1000000
 byteString10M	= genByteString 10000000
+byteString10MS	= genByteStringS 10000000
 
 main = defaultMain
 	[ bgroup "buzhash"
@@ -31,5 +34,8 @@ main = defaultMain
 	, bgroup "fixed chunkify"
 		[ bench "1MiB chunks, 10MB" $ nf (Fix.chunkify (2^20)) byteString10M
 		, bench "1MiB chunks, 5x10MB via 5 threads" $ nf (threadify 5 $ length . Fix.chunkify (2^20)) byteString10M
+		]
+	, bgroup "compression"
+		[ bench "LZ4 compress-decompress-verify, 10MB" $ nf (\s -> byteString10MS == (decompress $ BL.toStrict $ compress s)) byteString10MS
 		]
 	]

@@ -64,3 +64,4 @@ benchmark benchmark
   other-modules:
                        Chunker.BuzHash
                        Chunker.Fixed
+                       Compression

@@ -1,10 +1,18 @@
 module Compression
-	( decompress
+	( compress
+	, decompress
 	) where
 
 import qualified Codec.Lz4 as LZ4
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+
+compress :: ByteString -> BL.ByteString
+compress d = BL.fromChunks
+	[ B.pack [1,0]
+	, LZ4.compressBlock d
+	]
 
 decompress :: ByteString -> ByteString
 decompress d = let (compressionType, compressedData) = B.splitAt 2 d in
