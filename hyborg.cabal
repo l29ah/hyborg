@@ -54,6 +54,8 @@ test-suite spec
   other-modules:
                        Chunker.BuzHash
                        Chunker.BuzHashSpec
+                       Compression
+                       CompressionSpec
 benchmark benchmark
   import: stuff
   type: exitcode-stdio-1.0
