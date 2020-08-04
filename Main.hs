@@ -1,10 +1,6 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, RecordWildCards #-}
 
-import Data.Binary (decode)
-import Data.Binary.Get
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Data.Maybe
 import Options.Applicative
 
 import Object
@@ -15,6 +11,8 @@ data Command =
 		{ cProgress :: Bool
 		}
 	| Info
+		{ iRepo :: B.ByteString
+		}
 	deriving (Eq, Show)
 
 data Options = Options
@@ -29,18 +27,23 @@ optParser = Options
 
 commandParser :: Parser Command
 commandParser = hsubparser $
-	(command "info" $ info (pure Info) (progDesc "show repo info"))
+	(command "info" $ info (Info
+		<$> strArgument (metavar "REPOSITORY_OR_ARCHIVE" <> help "repository/archive address")
+		) (progDesc "show repo info"))
 	<> (command "create" $ info (Create
 		<$> switch (long "progress")
 		) (progDesc "create a new backup"))
 
 main = do
 	opts <- execParser $ info optParser (progDesc "borgbackup-compatible backup tool")
-	print opts
+	processCommand opts $ oCommand opts
+
+processCommand :: Options -> Command -> IO ()
+processCommand opts Info {..} = do
 	conn <- openRPC
 	negotiate conn
-	open conn "/home/l29ah/projects/hyborg/test" True
+	let repoPath = iRepo	-- TODO parse ::archive
+	open conn repoPath True
 	manifestData <- get conn repoManifest
 	manifest <- readManifest manifestData
 	getArchives conn manifest
-	pure ()
