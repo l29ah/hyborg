@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Object where
 
+import qualified Control.Monad.Fail as Fail
 import qualified Crypto.Hash.SHA256 as SHA256
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -8,7 +9,7 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Coerce
 import Data.List
 import Data.Map ((!))
-import qualified Control.Monad.Fail as Fail
+import qualified Data.Map as M
 import Data.Maybe
 import Data.MessagePack
 import Data.Word
@@ -60,8 +61,15 @@ getArchives conn manifest = do
 			mapM_ (getArchiveItem conn) items
 		) archiveIDs
 
-getArchiveItem :: RPCHandle -> ID ArchiveItem -> IO ()
+archiveItems :: Archive -> [ID ArchiveItem]
+archiveItems (Archive map) = fromMaybe [] $ do
+	items <- M.lookup "items" map
+	itemList <- case items of
+		ObjectArray l -> Just l
+		_ -> Nothing
+	mapM fromObject itemList
+
+getArchiveItem :: RPCHandle -> ID ArchiveItem -> IO ArchiveItem
 getArchiveItem conn cid = do
 	idata <- get conn cid
-	item :: Object <- unpack $ BL.fromStrict $ fromJust $ decrypt idata
-	print item
+	unpack $ BL.fromStrict $ fromJust $ decrypt idata
