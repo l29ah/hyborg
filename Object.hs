@@ -15,6 +15,9 @@ import Data.Word
 import RPC
 import Compression
 
+type Archive = Map ByteString Object
+type Manifest = Map ByteString Object
+
 data CryptoMethod = CryptoMethod
 	{ cmID :: Word8
 	, cmDecrypt :: ByteString -> ByteString
@@ -34,25 +37,24 @@ getMethod :: Word8 -> Maybe CryptoMethod
 getMethod mid = find (\m -> mid == cmID m) methods
 
 decrypt :: ByteString -> Maybe ByteString
-decrypt dat = 
+decrypt dat =
 	let (encryptionType, encryptedData) = B.splitAt 1 dat in
 	-- src/borg/crypto/key.py
 	do
 		method <- getMethod $ B.head encryptionType
 		pure $ decompress $ cmDecrypt method encryptedData
 
-readManifest :: (Fail.MonadFail m) => ByteString -> m (Map ByteString Object)
+readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
-type Archive = Map ByteString Object
-
-listArchives :: Map ByteString Object -> [(ByteString, ChunkID)]
+listArchives :: Manifest -> [(ByteString, ChunkID, ByteString)]
 listArchives manifest = let ObjectMap archives = manifest ! "archives" in
-	map (\(ObjectStr name, ObjectMap info) -> (name, (\(ObjectStr s) -> s) $ fromJust $ lookup (ObjectStr "id") info)) archives
+	map (\(ObjectStr name, ObjectMap info) -> (name, attr "id" info, attr "time" info)) archives
+	where attr s = (\(ObjectStr s) -> s) . fromJust . lookup (ObjectStr s)
 
-getArchives :: RPCHandle -> Map ByteString Object -> IO ()
+getArchives :: RPCHandle -> Manifest -> IO ()
 getArchives conn manifest = do
-	let archiveIDs = map snd $ listArchives manifest
+	let archiveIDs = map (\(_, id, _) -> id) $ listArchives manifest
 	mapM_ (\aid -> do
 			adata <- get conn aid
 			archive :: Archive <- unpack $ BL.fromStrict $ fromJust $ decrypt adata
@@ -60,7 +62,7 @@ getArchives conn manifest = do
 			items :: [ChunkID] <- fromObject $ archive ! "items"
 			mapM_ (getArchiveItem conn) items
 		) archiveIDs
-	
+
 getArchiveItem :: RPCHandle -> ChunkID -> IO ()
 getArchiveItem conn cid = do
 	idata <- get conn cid
