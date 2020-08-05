@@ -2,7 +2,6 @@
 module RPC where
 
 import Control.Concurrent
-import Control.Concurrent.Chan
 import Control.Exception
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -16,18 +15,14 @@ import Data.Map (Map, (!))
 import qualified Data.Map as M
 import Data.Maybe
 import Data.MessagePack
-import Data.MessagePack.Types
 import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Word
 import GHC.Generics
 import System.Environment
-import System.Process
 
-type ChunkID = ByteString
+import Types
 
-repoManifest :: ChunkID
-repoManifest = B.pack $ replicate 32 0
+repoManifest :: ID Manifest
+repoManifest = ID $ B.pack $ replicate 32 0
 
 data RPCVersion = RPCVersion Word Word Word Int deriving Generic
 instance MessagePack RPCVersion
@@ -105,15 +100,15 @@ open conn path isWrite = do
 		]
 	receiveResponse conn
 
-get :: RPCHandle -> ChunkID -> IO ByteString
-get conn id = assert (B.length id == 32) $ do
-	sendRequest conn "get" $ M.fromList [("id", ObjectStr id)]
+get :: RPCHandle -> ID a -> IO ByteString
+get conn id = assert (B.length (fromID id) == 32) $ do
+	sendRequest conn "get" $ M.fromList [("id", ObjectStr $ fromID id)]
 	receiveResponse conn
 
-put :: RPCHandle -> ChunkID -> ByteString -> IO ()
-put conn id dat = assert (B.length id == 32) $ do
+put :: RPCHandle -> ID a -> ByteString -> IO ()
+put conn id dat = assert (B.length (fromID id) == 32) $ do
 	sendRequest conn "put" $ M.fromList
-		[ ("id", ObjectStr id)
+		[ ("id", ObjectStr $ fromID id)
 		, ("data", ObjectStr dat)
 		, ("wait", ObjectBool True)
 		]

@@ -3,13 +3,14 @@
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base16 as B16
+import Data.List
 import Data.String.Class
 import Options.Applicative
 import Text.Printf
 
 import Object
 import RPC
+import Types
 
 data Command =
 	Create
@@ -63,7 +64,7 @@ connectToRepo repoPath rw = do
 	pure (conn, manifest)
 
 parseAddress :: ByteString -> (ByteString, ByteString)
-parseAddress = B.breakSubstring "::"
+parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring "::"
 
 processCommand :: Options -> Command -> IO ()
 processCommand opts Info {..} = do
@@ -82,9 +83,15 @@ processCommand opts c@Create {..} = do
 processCommand opts List {..} = do
 	let (repoPath, archiveName) = parseAddress lRepoArchive
 	(conn, manifest) <- connectToRepo repoPath False
-	when (B.null archiveName) $ do
+	if (B.null archiveName) then do
 		-- list all the archives present in the repo
 		let archs = listArchives manifest
 		mapM_ (\(archiveName, archiveID, time) -> do
-			printf "%-36s %s [%s]\n" (toString archiveName) (toString time) (toString $ B16.encode archiveID)
+			printf "%-36s %s [%s]\n" (toString archiveName) (toString time) (toString archiveID)
 			) archs
+	else do
+		-- list files in the archive
+		let archiveID = (\(_, id, _) -> id) $ maybe (error $ "archive " ++ show archiveName ++ " not found in the repo") id $ find (\(name, _, _) -> name == archiveName) $ listArchives manifest
+		arch <- getArchive conn archiveID
+		print arch
+		--getArchiveItem conn

@@ -43,10 +43,11 @@ executable hyborg
   import: stuff
   main-is:             Main.hs
   other-modules:
-                       RPC
-                       Object
-                       Compression
                        Chunker.BuzHash
+                       Compression
+                       Object
+                       RPC
+                       Types
 test-suite spec
   import: stuff
   type: exitcode-stdio-1.0

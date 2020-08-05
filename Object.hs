@@ -5,30 +5,23 @@ import qualified Crypto.Hash.SHA256 as SHA256
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.Coerce
 import Data.List
-import Data.Map (Map, (!))
+import Data.Map ((!))
 import qualified Control.Monad.Fail as Fail
 import Data.Maybe
 import Data.MessagePack
 import Data.Word
 
-import RPC
 import Compression
-
-type Archive = Map ByteString Object
-type Manifest = Map ByteString Object
-
-data CryptoMethod = CryptoMethod
-	{ cmID :: Word8
-	, cmDecrypt :: ByteString -> ByteString
-	, cmHashID :: ByteString -> ChunkID
-	}
+import RPC
+import Types
 
 plaintext :: CryptoMethod
 plaintext = CryptoMethod
 	{ cmID = 0x02
 	, cmDecrypt = id
-	, cmHashID = SHA256.hash
+	, cmHashID = ID . SHA256.hash
 	}
 
 methods = [plaintext]
@@ -47,23 +40,27 @@ decrypt dat =
 readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
-listArchives :: Manifest -> [(ByteString, ChunkID, ByteString)]
-listArchives manifest = let ObjectMap archives = manifest ! "archives" in
-	map (\(ObjectStr name, ObjectMap info) -> (name, attr "id" info, attr "time" info)) archives
+listArchives :: Manifest -> [(ByteString, ID Archive, ByteString)]
+listArchives manifest = let ObjectMap archives = (coerce manifest) ! "archives" in
+	map (\(ObjectStr name, ObjectMap info) -> (name, ID $ attr "id" info, attr "time" info)) archives
 	where attr s = (\(ObjectStr s) -> s) . fromJust . lookup (ObjectStr s)
+
+getArchive :: RPCHandle -> ID Archive -> IO Archive
+getArchive conn aid = do
+	adata <- get conn aid
+	unpack $ BL.fromStrict $ fromJust $ decrypt adata
 
 getArchives :: RPCHandle -> Manifest -> IO ()
 getArchives conn manifest = do
 	let archiveIDs = map (\(_, id, _) -> id) $ listArchives manifest
 	mapM_ (\aid -> do
-			adata <- get conn aid
-			archive :: Archive <- unpack $ BL.fromStrict $ fromJust $ decrypt adata
+			archive <- getArchive conn aid
 			print archive
-			items :: [ChunkID] <- fromObject $ archive ! "items"
+			items :: [ID ArchiveItem] <- fmap (fmap ID) $ fromObject $ (coerce archive) ! "items"
 			mapM_ (getArchiveItem conn) items
 		) archiveIDs
 
-getArchiveItem :: RPCHandle -> ChunkID -> IO ()
+getArchiveItem :: RPCHandle -> ID ArchiveItem -> IO ()
 getArchiveItem conn cid = do
 	idata <- get conn cid
 	item :: Object <- unpack $ BL.fromStrict $ fromJust $ decrypt idata
