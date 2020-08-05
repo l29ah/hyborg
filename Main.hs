@@ -9,6 +9,8 @@ import RPC
 data Command =
 	Create
 		{ cProgress :: Bool
+		, cArchive :: B.ByteString
+		, cFiles :: [FilePath]
 		}
 	| Info
 		{ iRepo :: B.ByteString
@@ -32,6 +34,8 @@ commandParser = hsubparser $
 		) (progDesc "show repo info"))
 	<> (command "create" $ info (Create
 		<$> switch (long "progress")
+		<*> strArgument (metavar "ARCHIVE" <> help "archive name")
+		<*> some (strArgument (metavar "PATH..." <> help "file path"))
 		) (progDesc "create a new backup"))
 
 main = do
@@ -47,3 +51,5 @@ processCommand opts Info {..} = do
 	manifestData <- get conn repoManifest
 	manifest <- readManifest manifestData
 	getArchives conn manifest
+processCommand opts c@Create {..} = do
+	print c
