@@ -3,6 +3,7 @@
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import Data.DateTime
 import Data.List
 import Data.String.Class
 import Options.Applicative
@@ -95,5 +96,5 @@ processCommand opts List {..} = do
 		arch <- getArchive conn archiveID
 		archiveItems <- mapM (getArchiveItem conn) $ archiveItems arch
 		mapM_ (\ArchiveItem {..} ->
-			printf "%6s %6s %-9d %d %s\n" (toString aiUser) (toString aiGroup) aiSize aiMTime (toString aiPath)
+			printf "%6s %6s %-9d %s %s\n" (toString aiUser) (toString aiGroup) aiSize (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div aiMTime 1000000000) (toString aiPath)
 			) archiveItems

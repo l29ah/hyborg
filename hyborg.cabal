@@ -37,6 +37,7 @@ common stuff
                        optparse-applicative ^>= 0.15.1.0,
                        string-class ^>= 0.1.7.0,
                        base16-bytestring ^>= 0.1.1.6,
+                       datetime ^>= 0.3.1,
   default-language:    Haskell2010
 
 executable hyborg
