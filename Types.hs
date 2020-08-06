@@ -59,7 +59,19 @@ instance MessagePack ArchiveItem where
 				<*> look "path"
 				<*> look "size"
 	fromObject _ = fail "wrong messagepack type for ArchiveItem"
-	toObject = undefined
+	toObject ArchiveItem {..} = toObject $ M.fromList
+		[ ("chunks" :: ByteString,	toObject aiChunks)
+		, ("atime",			toObject aiATime)
+		, ("ctime",			toObject aiCTime)
+		, ("mtime",			toObject aiMTime)
+		, ("gid",			toObject aiGID)
+		, ("group",			toObject aiGroup)
+		, ("uid",			toObject aiUID)
+		, ("user",			toObject aiUser)
+		, ("hardlink_master",		toObject aiHardlinkMaster)
+		, ("path",			toObject aiPath)
+		, ("size",			toObject aiSize)
+		]
 
 newtype DataChunk = DataChunk Void
 
