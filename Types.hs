@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards #-}
 module Types where
 
 import Data.ByteString (ByteString)
@@ -9,10 +9,13 @@ import Data.MessagePack.Types
 import Data.String.Class
 import Data.Void
 import Data.Word
-import GHC.Generics
+import qualified GHC.Generics as GHC
+import Generics.SOP
+
+import Types.Generics
 
 -- |32 bytes-long chunk identifier
-newtype ID a = ID { fromID :: ByteString } deriving (Eq, Generic)
+newtype ID a = ID { fromID :: ByteString } deriving (Eq, GHC.Generic)
 instance Show (ID a) where
 	show (ID bs) = show $ B16.encode bs
 instance ConvString (ID a) where
@@ -22,25 +25,27 @@ instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"
 
-newtype Archive = Archive (Map ByteString Object) deriving (Show, Generic)
+newtype Archive = Archive (Map ByteString Object) deriving (Show, GHC.Generic)
 instance MessagePack Archive
 
-newtype Manifest = Manifest (Map ByteString Object) deriving (Show, Generic)
+newtype Manifest = Manifest (Map ByteString Object) deriving (Show, GHC.Generic)
 instance MessagePack Manifest
 
 data ArchiveItem = ArchiveItem
 	{ aiChunks :: [ID DataChunk]
-	, aiATime :: Word64
-	, aiCTime :: Word64
-	, aiMTime :: Word64
+	, aiAtime :: Word64
+	, aiCtime :: Word64
+	, aiMtime :: Word64
 	, aiGID :: Word
 	, aiGroup :: ByteString
 	, aiUID :: Word
 	, aiUser :: ByteString
 	, aiHardlinkMaster :: Bool
-	, aiPath :: FilePath
+	, aiPath :: ByteString
 	, aiSize :: Word64
-	} deriving (Show)
+	} deriving (Eq, Show, GHC.Generic)
+instance Generic ArchiveItem
+instance HasDatatypeInfo ArchiveItem
 instance MessagePack ArchiveItem where
 	fromObject m@(ObjectMap _) = do
 		ma <- fromObject m
@@ -59,19 +64,7 @@ instance MessagePack ArchiveItem where
 				<*> look "path"
 				<*> look "size"
 	fromObject _ = fail "wrong messagepack type for ArchiveItem"
-	toObject ArchiveItem {..} = toObject $ M.fromList
-		[ ("chunks" :: ByteString,	toObject aiChunks)
-		, ("atime",			toObject aiATime)
-		, ("ctime",			toObject aiCTime)
-		, ("mtime",			toObject aiMTime)
-		, ("gid",			toObject aiGID)
-		, ("group",			toObject aiGroup)
-		, ("uid",			toObject aiUID)
-		, ("user",			toObject aiUser)
-		, ("hardlink_master",		toObject aiHardlinkMaster)
-		, ("path",			toObject aiPath)
-		, ("size",			toObject aiSize)
-		]
+	toObject = gToObjectMap
 
 newtype DataChunk = DataChunk Void
 
