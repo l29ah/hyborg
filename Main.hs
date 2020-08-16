@@ -78,7 +78,9 @@ processCommand opts c@Create {..} = do
 	when (B.null repoPath) $ error "no repository specified"
 	when (B.null archiveName) $ error "no archive name specified"
 	(conn, manifest) <- connectToRepo repoPath True
+	-- TODO get repo id to figure which cache entry to use
 	mapM_ (\fn -> do
+		-- TODO check if the file is backed up already via cache
 		pure ()
 		) cFiles
 processCommand opts List {..} = do
@@ -96,5 +98,5 @@ processCommand opts List {..} = do
 		arch <- getArchive conn archiveID
 		archiveItems <- mapM (getArchiveItem conn) $ archiveItems arch
 		mapM_ (\ArchiveItem {..} ->
-			printf "%6s %6s %-9d %s %s\n" (toString aiUser) (toString aiGroup) aiSize (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div aiMTime 1000000000) (toString aiPath)
+			printf "%6s %6s %-9d %s %s\n" (toString aiUser) (toString aiGroup) aiSize (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div aiMtime 1000000000) (toString aiPath)
 			) archiveItems
