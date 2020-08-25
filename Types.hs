@@ -31,17 +31,17 @@ newtype Manifest = Manifest (Map ByteString Object) deriving (Show, GHC.Generic)
 instance MessagePack Manifest
 
 data ArchiveItem = ArchiveItem
-	{ aiChunks :: [ID DataChunk]
-	, aiAtime :: Word64
-	, aiCtime :: Word64
-	, aiMtime :: Word64
-	, aiGID :: Word
-	, aiGroup :: ByteString
-	, aiUID :: Word
-	, aiUser :: ByteString
-	, aiHardlinkMaster :: Bool
-	, aiPath :: ByteString
-	, aiSize :: Word64
+	{ chunks :: [ID DataChunk]
+	, atime :: Word64
+	, ctime :: Word64
+	, mtime :: Word64
+	, gid :: Word
+	, group :: ByteString
+	, uid :: Word
+	, user :: ByteString
+	, hardlinkMaster :: Bool
+	, path :: ByteString
+	, size :: Word64
 	} deriving (Eq, Show, GHC.Generic)
 instance Generic ArchiveItem
 instance HasDatatypeInfo ArchiveItem

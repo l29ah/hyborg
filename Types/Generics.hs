@@ -3,7 +3,6 @@ module Types.Generics where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
-import Data.Char
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.MessagePack
@@ -20,8 +19,7 @@ gToObjectMap x = toObject $ M.fromList $ collapse_NP $ hcliftA2 (Proxy :: Proxy 
 toTuple (FieldInfo fn) (I dat) = K (B.pack $ toSnakeName fn, toObject dat)
 
 toSnakeName :: String -> String
-toSnakeName field = let prefixLength = length $ fst $ break isUpper field in
-	toQuietSnake $ fromHumps $ drop prefixLength field
+toSnakeName field = toQuietSnake $ fromHumps field
 
 -- |List the field names of a product type
 getFields :: forall a xs. (IsProductType a xs, HasDatatypeInfo a) => Proxy a -> NP FieldInfo xs

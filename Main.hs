@@ -98,5 +98,5 @@ processCommand opts List {..} = do
 		arch <- getArchive conn archiveID
 		archiveItems <- mapM (getArchiveItem conn) $ archiveItems arch
 		mapM_ (\ArchiveItem {..} ->
-			printf "%6s %6s %-9d %s %s\n" (toString aiUser) (toString aiGroup) aiSize (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div aiMtime 1000000000) (toString aiPath)
+			printf "%6s %6s %-9d %s %s\n" (toString user) (toString group) size (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div mtime 1000000000) (toString path)
 			) archiveItems
