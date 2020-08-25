@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 module Object where
 
 import qualified Control.Monad.Fail as Fail
@@ -42,8 +44,7 @@ readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
 listArchives :: Manifest -> [(ByteString, ID Archive, ByteString)]
-listArchives manifest = let ObjectMap archives = (coerce manifest) ! "archives" in
-	map (\(ObjectStr name, ObjectMap info) -> (name, ID $ attr "id" info, attr "time" info)) archives
+listArchives manifest = map (\(name, ObjectMap info) -> (name, ID $ attr "id" info, attr "time" info)) $ M.toList manifest.archives
 	where attr s = (\(ObjectStr s) -> s) . fromJust . lookup (ObjectStr s)
 
 getArchive :: RPCHandle -> ID Archive -> IO Archive

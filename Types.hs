@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 module Types where
 
 import Data.ByteString (ByteString)
@@ -24,11 +26,22 @@ instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"
 
-newtype Archive = Archive (Map ByteString Object) deriving (Show, GHC.Generic)
+newtype Archive = Archive (Map ByteString Object) deriving (Eq, Show, GHC.Generic)
 instance MessagePack Archive
 
-newtype Manifest = Manifest (Map ByteString Object) deriving (Show, GHC.Generic)
-instance MessagePack Manifest
+data Manifest = Manifest
+	{ version :: Int
+	, timestamp :: ByteString
+	, itemKeys :: [ByteString]
+	, config :: Object
+	, archives :: Map ByteString Object
+	, tam :: Object
+	} deriving (Eq, Show, GHC.Generic)
+instance Generic Manifest
+instance HasDatatypeInfo Manifest
+instance MessagePack Manifest where
+	toObject = gToObjectMap
+	fromObject = gFromObjectMap
 
 data ArchiveItem = ArchiveItem
 	{ chunks :: [ID DataChunk]
