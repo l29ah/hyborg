@@ -4,7 +4,6 @@ module Types where
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as B16
 import Data.Map (Map)
-import qualified Data.Map as M
 import Data.MessagePack.Types
 import Data.String.Class
 import Data.Void
@@ -47,23 +46,7 @@ data ArchiveItem = ArchiveItem
 instance Generic ArchiveItem
 instance HasDatatypeInfo ArchiveItem
 instance MessagePack ArchiveItem where
-	fromObject m@(ObjectMap _) = do
-		ma <- fromObject m
-		let	look :: (MessagePack a, MonadFail m) => ByteString -> m a
-			look field = maybe (fail $ "no field " ++ toString field ++ " found") fromObject $ M.lookup field (ma :: Map ByteString Object) in
-			ArchiveItem
-				<$> look "chunks"
-				<*> look "atime"
-				<*> look "ctime"
-				<*> look "mtime"
-				<*> look "gid"
-				<*> look "group"
-				<*> look "uid"
-				<*> look "user"
-				<*> look "hardlink_master"
-				<*> look "path"
-				<*> look "size"
-	fromObject _ = fail "wrong messagepack type for ArchiveItem"
+	fromObject = gFromObjectMap
 	toObject = gToObjectMap
 
 newtype DataChunk = DataChunk Void

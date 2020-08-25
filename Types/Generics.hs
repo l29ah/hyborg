@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, TypeFamilies, ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric, TypeFamilies, ScopedTypeVariables, FlexibleContexts, TypeOperators, DataKinds, PartialTypeSignatures, TypeApplications, FlexibleInstances #-}
 module Types.Generics where
 
 import Data.ByteString (ByteString)
@@ -8,18 +8,13 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.MessagePack
 import Data.SOP.NP
-import qualified GHC.Generics as GHC
 import Generics.SOP
 import Text.Casing
 
---class (Generic a, HasDatatypeInfo a, All2 MessagePack (Code a)) => GMessagePackMap a where
---	gToObjectMap :: a -> Object
---	default gToObjectMap :: a -> Object
---	--gFromObjectMap :: MonadFail m => Object -> m a
+-- TODO class declaration to reduce tToObjectMap/gFromObjectMap usage boilerplate
 
 gToObjectMap :: forall a xs. (IsProductType a xs, HasDatatypeInfo a, All MessagePack xs) => a -> Object
-gToObjectMap x = toObject $ M.fromList $ collapse_NP $ hcliftA2 (Proxy :: Proxy MessagePack) toTuple recs dat where
-	recs = (\(ADT _ _ (Record _ fields :* Nil) _) -> fields) $ datatypeInfo (Proxy :: Proxy a)
+gToObjectMap x = toObject $ M.fromList $ collapse_NP $ hcliftA2 (Proxy :: Proxy MessagePack) toTuple (getFields $ Proxy @a) dat where
 	dat = (\(SOP (Z fields)) -> fields) $ from x
 
 toTuple (FieldInfo fn) (I dat) = K (B.pack $ toSnakeName fn, toObject dat)
@@ -28,14 +23,18 @@ toSnakeName :: String -> String
 toSnakeName field = let prefixLength = length $ fst $ break isUpper field in
 	toQuietSnake $ fromHumps $ drop prefixLength field
 
---gFromObjectMap :: forall a xs m. (IsProductType a xs, HasDatatypeInfo a, All MessagePack xs, MonadFail m) => Object -> m a
---gFromObjectMap x = do
---	myMap :: Map ByteString Object <- fromObject x
---	let recs = (\(ADT _ _ (Record _ fields :* Nil) _) -> fields) $ datatypeInfo (Proxy :: Proxy a)
---	--let dat = (\(SOP (Z fields)) -> fields) $ from x
---	--let sop =
---	hcollapse $ hcliftA2 (Proxy :: Proxy MessagePack) fromMap recs $ M.toList myMap
---	--pure undefined
---
---fromMap :: MonadFail m => FieldInfo a -> Map ByteString Object -> m K
---fromMap (FieldInfo fn) m = fromJust $ M.lookup (B.pack fn) m
+-- |List the field names of a product type
+getFields :: forall a xs. (IsProductType a xs, HasDatatypeInfo a) => Proxy a -> NP FieldInfo xs
+getFields proxy = (\(ADT _ _ (Record _ fields :* Nil) _) -> fields) $ datatypeInfo proxy
+
+toFail :: MonadFail m => String -> Maybe a -> m a
+toFail str = maybe (fail str) pure
+
+gFromObjectMap :: forall a xs m. (IsProductType a xs, HasDatatypeInfo a, All MessagePack xs, MonadFail m) => Object -> m a
+gFromObjectMap x = do
+	myMap :: Map ByteString Object <- fromObject x
+	contents <- hsequence $ hcliftA (Proxy @MessagePack) (\(FieldInfo fn :: FieldInfo z) -> do
+			content <- toFail ("no field " ++ fn ++ " present in MessagePack") $ M.lookup (B.pack $ toSnakeName fn) myMap
+			fromObject content :: m z
+		) $ getFields $ Proxy @a
+	pure $ productTypeTo contents
