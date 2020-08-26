@@ -20,7 +20,7 @@ newtype ID a = ID { fromID :: ByteString } deriving (Eq, GHC.Generic)
 instance Show (ID a) where
 	show (ID bs) = show $ B16.encode bs
 instance ConvString (ID a) where
-	toString (ID bs) = toString bs
+	toString (ID bs) = toString $ B16.encode bs
 	fromString = undefined
 instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
