@@ -25,7 +25,7 @@ plaintext = CryptoMethod
 	{ cmID = 0x02
 	, cmDecrypt = id
 	, encrypt = id
-	, cmHashID = ID . SHA256.hash
+	, hashID = ID . SHA256.hash
 	}
 
 methods = [plaintext]

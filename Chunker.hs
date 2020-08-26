@@ -11,7 +11,8 @@ import Types
 
 chunkifyFile :: BuzHashChunkerSettings -> Fd -> IO [BL.ByteString]
 chunkifyFile settings fd = do
-	hdl <- fdToHandle fd
+	newFd <- dup fd	-- FIXME kludge to avoid hGetContents closing our handle
+	hdl <- fdToHandle newFd
 	hSetBinaryMode hdl True
 	dat <- BL.hGetContents hdl
 	pure $ BH.chunkify settings dat

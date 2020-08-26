@@ -1,9 +1,13 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, RecordWildCards #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 
 import Control.Exception
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import Data.Coerce
 import Data.DateTime
 import Data.Default
 import Data.List
@@ -95,10 +99,17 @@ processCommand opts c@Create {..} = do
 		status <- getFdStatus fd
 		-- TODO check if the file is backed up already via cache
 		chunks <- chunkifyFile def fd	-- TODO settable chunker settings
-		let chunkIDs = []	-- TODO
+		let strictChunks = map BL.toStrict chunks
+		let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
+		-- TODO other encryption schemes
+		let hasher = coerce . plaintext.hashID
+		let chunkIDs = map hasher strictChunks
+		let compressedChunks = map (Object.encrypt plaintext) chunks
+		let chunkCompressedSizes = map (fromIntegral . BL.length) compressedChunks
 		let group = ""	-- TODO
 		let owner = ""	-- TODO
-		let ai = ArchiveItem chunkIDs
+		let ai = ArchiveItem
+			(zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes)
 			(toNanoSeconds $ accessTime status)
 			(toNanoSeconds $ statusChangeTime status)
 			(toNanoSeconds $ modificationTime status)

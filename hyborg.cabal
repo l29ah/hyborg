@@ -51,6 +51,7 @@ common stuff
   default-language:    Haskell2010
   other-modules:
                        Cache
+                       Chunker
                        Chunker.BuzHash
                        Compression
                        Object

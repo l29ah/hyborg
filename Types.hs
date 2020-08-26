@@ -51,8 +51,15 @@ instance MessagePack Manifest where
 	toObject = gToObjectMap
 	fromObject = gFromObjectMap
 
+data DescribedChunk = DescribedChunk
+	{ chunkID :: ID DataChunk
+	, size :: Word64
+	, compressedSize :: Word64
+	} deriving (Eq, Show, GHC.Generic)
+instance MessagePack DescribedChunk
+
 data ArchiveItem = ArchiveItem
-	{ chunks :: [ID DataChunk]
+	{ chunks :: [DescribedChunk]
 	, atime :: Word64
 	, ctime :: Word64
 	, mtime :: Word64
@@ -76,7 +83,7 @@ data CryptoMethod = CryptoMethod
 	{ cmID :: Word8
 	, cmDecrypt :: ByteString -> ByteString
 	, encrypt :: BL.ByteString -> BL.ByteString
-	, cmHashID :: ByteString -> ID Void
+	, hashID :: ByteString -> ID Void
 	}
 
 type CacheTuple = (ID FilePath, CacheEntry)
