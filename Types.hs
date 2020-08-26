@@ -1,10 +1,12 @@
-{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 module Types where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as B16
+import Data.HashMap.Strict (HashMap)
+import Data.Hashable
 import Data.Map (Map)
 import Data.MessagePack.Types
 import Data.String.Class
@@ -16,7 +18,7 @@ import Generics.SOP
 import Types.Generics
 
 -- |32 bytes-long chunk identifier
-newtype ID a = ID { fromID :: ByteString } deriving (Eq, GHC.Generic)
+newtype ID a = ID { fromID :: ByteString } deriving (Eq, Hashable, GHC.Generic)
 instance Show (ID a) where
 	show (ID bs) = show $ B16.encode bs
 instance ConvString (ID a) where
@@ -25,6 +27,9 @@ instance ConvString (ID a) where
 instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"
+
+-- |Phantom data type to parametrize ID with
+data Repository
 
 newtype Archive = Archive (Map ByteString Object) deriving (Eq, Show, GHC.Generic)
 instance MessagePack Archive
@@ -69,3 +74,16 @@ data CryptoMethod = CryptoMethod
 	, cmDecrypt :: ByteString -> ByteString
 	, cmHashID :: ByteString -> ID Void
 	}
+
+type CacheTuple = (ID FilePath, CacheEntry)
+
+data CacheEntry = CacheEntry
+	{ inode :: Word64
+	, size :: Word64
+	, mtime :: Word64
+	, age :: Word
+	, chunks :: [ID DataChunk]
+	} deriving (Eq, Show, GHC.Generic)
+instance MessagePack CacheEntry
+
+type FileCache = HashMap (ID FilePath) CacheEntry

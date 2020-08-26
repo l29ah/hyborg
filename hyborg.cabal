@@ -43,12 +43,16 @@ common stuff
                        generics-sop ^>= 0.5.1.0,
                        record-dot-preprocessor ^>= 0.2.6,
                        record-hasfield ^>= 1.0,
+                       xdg-basedir ^>= 0.2.2,
+                       unordered-containers ^>= 0.2.12.0,
+                       hashable ^>= 1.2.7.0,
   default-language:    Haskell2010
 
 executable hyborg
   import: stuff
   main-is:             Main.hs
   other-modules:
+                       Cache
                        Chunker.BuzHash
                        Compression
                        Object

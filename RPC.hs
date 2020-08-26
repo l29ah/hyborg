@@ -89,8 +89,7 @@ negotiate conn = do
 	-- TODO check that the server supports our features
 	pure ()
 
--- |returns repository ID
-open :: RPCHandle -> ByteString -> Bool -> IO ByteString
+open :: RPCHandle -> ByteString -> Bool -> IO (ID Repository)
 open conn path isWrite = do
 	sendRequest conn "open" $ M.fromList
 		[ ("path", ObjectStr path)
@@ -98,7 +97,8 @@ open conn path isWrite = do
 		, ("lock", ObjectBool isWrite)
 		, ("exclusive", ObjectBool isWrite)
 		]
-	receiveResponse conn
+	resp <- receiveResponse conn
+	pure $ ID resp
 
 get :: RPCHandle -> ID a -> IO ByteString
 get conn id = assert (B.length (fromID id) == 32) $ do

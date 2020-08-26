@@ -9,6 +9,7 @@ import Data.String.Class
 import Options.Applicative
 import Text.Printf
 
+import Cache
 import Object
 import RPC
 import Types
@@ -55,14 +56,14 @@ main = do
 	opts <- execParser $ info optParser (progDesc "borgbackup-compatible backup tool")
 	processCommand opts $ oCommand opts
 
-connectToRepo :: ByteString -> Bool -> IO (RPCHandle, Manifest)
+connectToRepo :: ByteString -> Bool -> IO (RPCHandle, ID Repository, Manifest)
 connectToRepo repoPath rw = do
 	conn <- openRPC
 	negotiate conn
-	open conn repoPath rw
+	id <- open conn repoPath rw
 	manifestData <- get conn repoManifest
 	manifest <- readManifest manifestData
-	pure (conn, manifest)
+	pure (conn, id, manifest)
 
 parseAddress :: ByteString -> (ByteString, ByteString)
 parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring "::"
@@ -70,22 +71,22 @@ parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring
 processCommand :: Options -> Command -> IO ()
 processCommand opts Info {..} = do
 	let (repoPath, archiveName) = parseAddress iRepo
-	(conn, manifest) <- connectToRepo repoPath False
+	(conn, _, manifest) <- connectToRepo repoPath False
 	getArchives conn manifest
 processCommand opts c@Create {..} = do
 	print c
 	let (repoPath, archiveName) = parseAddress cArchive
 	when (B.null repoPath) $ error "no repository specified"
 	when (B.null archiveName) $ error "no archive name specified"
-	(conn, manifest) <- connectToRepo repoPath True
-	-- TODO get repo id to figure which cache entry to use
+	(conn, id, manifest) <- connectToRepo repoPath True
+	fileCache <- readCache id
 	mapM_ (\fn -> do
 		-- TODO check if the file is backed up already via cache
 		pure ()
 		) cFiles
 processCommand opts List {..} = do
 	let (repoPath, archiveName) = parseAddress lRepoArchive
-	(conn, manifest) <- connectToRepo repoPath False
+	(conn, _, manifest) <- connectToRepo repoPath False
 	if (B.null archiveName) then do
 		-- list all the archives present in the repo
 		let archs = listArchives manifest
