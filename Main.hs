@@ -17,6 +17,7 @@ import Foreign.C.Types
 import Options.Applicative
 import System.Posix.Files
 import System.Posix.IO
+import System.Posix.Types
 import Text.Printf
 
 import Cache
@@ -115,6 +116,7 @@ processCommand opts c@Create {..} = do
 			(toNanoSeconds $ modificationTime status)
 			(fromIntegral $ fileGroup status) group
 			(fromIntegral $ fileOwner status) owner
+			(coerce $ fileMode status)
 			True
 			(fromString fn)
 			(fromIntegral $ fileSize status)
