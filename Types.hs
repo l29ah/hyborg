@@ -1,12 +1,15 @@
-{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, Strict #-}
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 module Types where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as B16
+import qualified Data.ByteString.Lazy as BL
+import Data.Default
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable
+import Data.Int
 import Data.Map (Map)
 import Data.MessagePack.Types
 import Data.String.Class
@@ -53,9 +56,9 @@ data ArchiveItem = ArchiveItem
 	, atime :: Word64
 	, ctime :: Word64
 	, mtime :: Word64
-	, gid :: Word
+	, gid :: Word32
 	, group :: ByteString
-	, uid :: Word
+	, uid :: Word32
 	, user :: ByteString
 	, hardlinkMaster :: Bool
 	, path :: ByteString
@@ -72,6 +75,7 @@ newtype DataChunk = DataChunk Void
 data CryptoMethod = CryptoMethod
 	{ cmID :: Word8
 	, cmDecrypt :: ByteString -> ByteString
+	, encrypt :: BL.ByteString -> BL.ByteString
 	, cmHashID :: ByteString -> ID Void
 	}
 
@@ -87,3 +91,13 @@ data CacheEntry = CacheEntry
 instance MessagePack CacheEntry
 
 type FileCache = HashMap (ID FilePath) CacheEntry
+
+data BuzHashChunkerSettings = BuzHashChunkerSettings
+	{ seed :: Word32
+	, minExp :: Int
+	, maxExp :: Int
+	, maskBits :: Int
+	, windowSize :: Int64
+	} deriving (Eq, Show)
+instance Default BuzHashChunkerSettings where
+	def = BuzHashChunkerSettings 0 19 23 21 4095

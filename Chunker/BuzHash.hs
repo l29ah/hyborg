@@ -4,8 +4,9 @@ module Chunker.BuzHash where
 import Data.Array.Base
 import Data.Bits
 import qualified Data.ByteString.Lazy as BL
-import Data.Int
 import Data.Word
+
+import Types
 
 type LookupTable = UArray Word8 Word32
 
@@ -75,14 +76,8 @@ buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` updater lut remove le
 -- - theory: https://en.wikipedia.org/wiki/Rolling_hash#Content-based_slicing_using_a_rolling_hash
 -- - some details on Borg's implementation:
 --   https://borgbackup.readthedocs.io/en/stable/internals/data-structures.html#chunker-details
-chunkify	:: Word32
-		-> Int
-		-> Int
-		-> Int
-		-> Int64
-		-> BL.ByteString
-		-> [BL.ByteString]
-chunkify seed minExp maxExp maskBits window = goFirst where
+chunkify :: BuzHashChunkerSettings -> BL.ByteString -> [BL.ByteString]
+chunkify (BuzHashChunkerSettings seed minExp maxExp maskBits window) = goFirst where
 	goFirst !bs =
 		let dropMin = BL.drop minSize bs
 		in go

@@ -1,15 +1,22 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, RecordWildCards #-}
 
+import Control.Exception
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.DateTime
+import Data.Default
 import Data.List
 import Data.String.Class
+import Data.Word
+import Foreign.C.Types
 import Options.Applicative
+import System.Posix.Files
+import System.Posix.IO
 import Text.Printf
 
 import Cache
+import Chunker
 import Object
 import RPC
 import Types
@@ -68,6 +75,10 @@ connectToRepo repoPath rw = do
 parseAddress :: ByteString -> (ByteString, ByteString)
 parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring "::"
 
+-- TODO fetch nanoseconds from fstat(2)
+toNanoSeconds :: CTime -> Word64
+toNanoSeconds (CTime t) = 1000000000 * fromIntegral t
+
 processCommand :: Options -> Command -> IO ()
 processCommand opts Info {..} = do
 	let (repoPath, archiveName) = parseAddress iRepo
@@ -80,8 +91,23 @@ processCommand opts c@Create {..} = do
 	when (B.null archiveName) $ error "no archive name specified"
 	(conn, id, manifest) <- connectToRepo repoPath True
 	fileCache <- readCache id
-	mapM_ (\fn -> do
+	mapM_ (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+		status <- getFdStatus fd
 		-- TODO check if the file is backed up already via cache
+		chunks <- chunkifyFile def fd	-- TODO settable chunker settings
+		let chunkIDs = []	-- TODO
+		let group = ""	-- TODO
+		let owner = ""	-- TODO
+		let ai = ArchiveItem chunkIDs
+			(toNanoSeconds $ accessTime status)
+			(toNanoSeconds $ statusChangeTime status)
+			(toNanoSeconds $ modificationTime status)
+			(fromIntegral $ fileGroup status) group
+			(fromIntegral $ fileOwner status) owner
+			True
+			(fromString fn)
+			(fromIntegral $ fileSize status)
+		print ai
 		pure ()
 		) cFiles
 processCommand opts List {..} = do

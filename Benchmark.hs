@@ -4,6 +4,7 @@ import Criterion.Main
 import Control.Parallel.Strategies
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.Default
 
 import Chunker.BuzHash
 import qualified Chunker.Fixed as Fix
@@ -27,9 +28,9 @@ main = defaultMain
 		[ bench "" $ nf (buzhashUpdate borgLookupTable 0x12345678 0x90 0x12) 0x3
 		]
 	, bgroup "chunkify"
-		[ bench "default settings 1MB" $ nf (chunkify 0 19 23 21 4095) byteString1M
-		, bench "default settings 10MB" $ nf (chunkify 0 19 23 21 4095) byteString10M
-		, bench "default settings 5x10MB via 5 threads" $ nf (threadify 5 $ length . chunkify 0 19 23 21 4095) byteString10M
+		[ bench "default settings 1MB" $ nf (chunkify def) byteString1M
+		, bench "default settings 10MB" $ nf (chunkify def) byteString10M
+		, bench "default settings 5x10MB via 5 threads" $ nf (threadify 5 $ length . chunkify def) byteString10M
 		]
 	, bgroup "fixed chunkify"
 		[ bench "1MiB chunks, 10MB" $ nf (Fix.chunkify (2^20)) byteString10M

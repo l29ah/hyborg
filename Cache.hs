@@ -1,8 +1,6 @@
 module Cache where
 
 import Conduit
-import Data.Conduit
-import Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
 import Data.Conduit.Serialization.Binary
 import qualified Data.HashMap.Strict as HM

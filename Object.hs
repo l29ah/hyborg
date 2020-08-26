@@ -24,6 +24,7 @@ plaintext :: CryptoMethod
 plaintext = CryptoMethod
 	{ cmID = 0x02
 	, cmDecrypt = id
+	, encrypt = id
 	, cmHashID = ID . SHA256.hash
 	}
 
@@ -38,7 +39,10 @@ decrypt dat =
 	-- src/borg/crypto/key.py
 	do
 		method <- getMethod $ B.head encryptionType
-		pure $ decompress $ cmDecrypt method encryptedData
+		pure $ decompress $ method.cmDecrypt encryptedData
+
+encrypt :: CryptoMethod -> BL.ByteString -> BL.ByteString
+encrypt method dat = BL.concat [BL.pack [method.cmID], method.encrypt $ compress $ BL.toStrict dat]
 
 readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
