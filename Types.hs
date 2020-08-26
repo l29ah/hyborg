@@ -21,7 +21,7 @@ instance Show (ID a) where
 	show (ID bs) = show $ B16.encode bs
 instance ConvString (ID a) where
 	toString (ID bs) = toString $ B16.encode bs
-	fromString = undefined
+	fromString = ID . fst . B16.decode . fromString
 instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"
