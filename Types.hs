@@ -34,16 +34,53 @@ instance MessagePack (ID a) where
 -- |Phantom data type to parametrize ID with
 data Repository
 
-newtype Archive = Archive (Map ByteString Object) deriving (Eq, Show, GHC.Generic)
-instance MessagePack Archive
+data TAM = TAM
+	{ hmac :: ByteString
+	, salt :: ByteString
+	, _type :: ByteString
+	} deriving (Eq, Show, GHC.Generic)
+instance Generic TAM
+instance HasDatatypeInfo TAM
+instance MessagePack TAM where
+	toObject = gToObjectMap
+	fromObject = gFromObjectMap
+
+data Archive = Archive
+	{ chunkerParams :: (Word, Word, Word, Word)
+	, cmdline :: [ByteString]
+	, comment :: ByteString
+	, hostname :: ByteString
+	, items :: [ID ArchiveItem]
+	, name :: ByteString
+	, tam :: TAM
+	, time :: ByteString
+	, timeEnd :: ByteString
+	, username :: ByteString
+	, version :: Word
+	} deriving (Eq, Show, GHC.Generic)
+instance Generic Archive
+instance HasDatatypeInfo Archive
+instance MessagePack Archive where
+	toObject = gToObjectMap
+	fromObject = gFromObjectMap
+
+data DescribedArchive = DescribedArchive
+	{ _id :: ID Archive
+	, time :: ByteString
+	} deriving (Eq, Show, GHC.Generic)
+instance Generic DescribedArchive
+instance HasDatatypeInfo DescribedArchive
+instance MessagePack DescribedArchive where
+	toObject = gToObjectMap
+	fromObject = gFromObjectMap
 
 data Manifest = Manifest
 	{ version :: Int
 	, timestamp :: ByteString
 	, itemKeys :: [ByteString]
 	, config :: Object
-	, archives :: Map ByteString Object
-	, tam :: Object
+	, archives :: Map ByteString DescribedArchive
+	, tam :: TAM
 	} deriving (Eq, Show, GHC.Generic)
 instance Generic Manifest
 instance HasDatatypeInfo Manifest
@@ -67,6 +104,7 @@ data ArchiveItem = ArchiveItem
 	, group :: ByteString
 	, uid :: Word32
 	, user :: ByteString
+	, mode :: Word32
 	, hardlinkMaster :: Bool
 	, path :: ByteString
 	, size :: Word64

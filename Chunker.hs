@@ -1,6 +1,5 @@
 module Chunker where
 
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import System.IO
 import System.Posix.IO

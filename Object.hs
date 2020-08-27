@@ -8,9 +8,7 @@ import qualified Crypto.Hash.SHA256 as SHA256
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.Coerce
 import Data.List
-import Data.Map ((!))
 import qualified Data.Map as M
 import Data.Maybe
 import Data.MessagePack
@@ -48,8 +46,7 @@ readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest = unpack . BL.fromStrict . fromJust . decrypt
 
 listArchives :: Manifest -> [(ByteString, ID Archive, ByteString)]
-listArchives manifest = map (\(name, ObjectMap info) -> (name, ID $ attr "id" info, attr "time" info)) $ M.toList manifest.archives
-	where attr s = (\(ObjectStr s) -> s) . fromJust . lookup (ObjectStr s)
+listArchives manifest = map (\(name, describedArchive) -> (name, describedArchive._id, describedArchive.time)) $ M.toList manifest.archives
 
 getArchive :: RPCHandle -> ID Archive -> IO Archive
 getArchive conn aid = do
@@ -62,17 +59,8 @@ getArchives conn manifest = do
 	mapM_ (\aid -> do
 			archive <- getArchive conn aid
 			print archive
-			items :: [ID ArchiveItem] <- fmap (fmap ID) $ fromObject $ (coerce archive) ! "items"
-			mapM_ (getArchiveItem conn) items
+			mapM_ (getArchiveItem conn) archive.items
 		) archiveIDs
-
-archiveItems :: Archive -> [ID ArchiveItem]
-archiveItems (Archive map) = fromMaybe [] $ do
-	items <- M.lookup "items" map
-	itemList <- case items of
-		ObjectArray l -> Just l
-		_ -> Nothing
-	mapM fromObject itemList
 
 getArchiveItem :: RPCHandle -> ID ArchiveItem -> IO ArchiveItem
 getArchiveItem conn cid = do

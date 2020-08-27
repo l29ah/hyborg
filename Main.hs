@@ -136,7 +136,7 @@ processCommand opts List {..} = do
 		-- list files in the archive
 		let archiveID = (\(_, id, _) -> id) $ maybe (error $ "archive " ++ show archiveName ++ " not found in the repo") id $ find (\(name, _, _) -> name == archiveName) $ listArchives manifest
 		arch <- getArchive conn archiveID
-		archiveItems <- mapM (getArchiveItem conn) $ archiveItems arch
+		archiveItems <- mapM (getArchiveItem conn) $ arch.items
 		mapM_ (\ArchiveItem {..} ->
 			printf "%6s %6s %-9d %s %s\n" (toString user) (toString group) size (formatDateTime "%F %X" $ fromSeconds $ fromIntegral $ div mtime 1000000000) (toString path)
 			) archiveItems

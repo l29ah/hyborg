@@ -19,7 +19,7 @@ gToObjectMap x = toObject $ M.fromList $ collapse_NP $ hcliftA2 (Proxy :: Proxy 
 toTuple (FieldInfo fn) (I dat) = K (B.pack $ toSnakeName fn, toObject dat)
 
 toSnakeName :: String -> String
-toSnakeName field = toQuietSnake $ fromHumps field
+toSnakeName field = toQuietSnake $ fromHumps $ if head field == '_' then tail field else field
 
 -- |List the field names of a product type
 getFields :: forall a xs. (IsProductType a xs, HasDatatypeInfo a) => Proxy a -> NP FieldInfo xs
