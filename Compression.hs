@@ -11,7 +11,7 @@ import qualified Data.ByteString.Lazy as BL
 compress :: ByteString -> BL.ByteString
 compress d = BL.fromChunks
 	[ B.pack [1,0]
-	, LZ4.compressBlock d
+	, LZ4.compressBlockSingleThreaded d
 	]
 
 decompress :: ByteString -> ByteString
@@ -22,4 +22,4 @@ decompress d = let (compressionType, compressedData) = B.splitAt 2 d in
 
 -- FIXME sane allocation logic
 lz4Decompress :: ByteString -> ByteString
-lz4Decompress d = LZ4.decompressBlockSz d $ 2^24
+lz4Decompress d = LZ4.decompressBlockSzSingleThreaded d $ 2^24
