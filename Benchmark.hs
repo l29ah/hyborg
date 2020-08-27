@@ -38,5 +38,6 @@ main = defaultMain
 		]
 	, bgroup "compression"
 		[ bench "LZ4 compress-decompress-verify, 10MB" $ nf (\s -> byteString10MS == (decompress $ BL.toStrict $ compress s)) byteString10MS
+		, bench "LZ4 compress-decompress-verify, 5x10MB via 5 threads" $ nf (threadify 5 (\s -> byteString10MS == (decompress $ BL.toStrict $ compress s))) byteString10MS
 		]
 	]
