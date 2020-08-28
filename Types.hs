@@ -4,6 +4,7 @@
 module Types where
 
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
 import Data.Default
@@ -44,6 +45,11 @@ instance HasDatatypeInfo TAM
 instance MessagePack TAM where
 	toObject = gToObjectMap
 	fromObject = gFromObjectMap
+instance Default TAM where
+	def = TAM
+		(B.replicate 64 0)
+		(B.replicate 64 0)
+		"HKDF_HMAC_SHA512"
 
 data Archive = Archive
 	{ chunkerParams :: (Word, Word, Word, Word)

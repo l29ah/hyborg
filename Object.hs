@@ -4,10 +4,16 @@
 module Object where
 
 import qualified Control.Monad.Fail as Fail
+import Crypto.Hash.Algorithms
 import qualified Crypto.Hash.SHA256 as SHA256
+import qualified Crypto.KDF.HKDF as HKDF
+import qualified Crypto.MAC.HMAC as HMAC
+import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Random.MWC
+import Data.Default
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
@@ -66,3 +72,19 @@ getArchiveItem :: RPCHandle -> ID ArchiveItem -> IO ArchiveItem
 getArchiveItem conn cid = do
 	idata <- get conn cid
 	unpack $ BL.fromStrict $ fromJust $ decrypt idata
+
+addTAM :: Archive -> IO Archive
+addTAM archive = do
+	salt <- random 64
+	let preTAM = def{salt = salt}
+	let preArchive = archive{tam = preTAM}
+	let packedPreArchive = BL.toStrict $ pack preArchive
+	let ikm = undefined -- TODO self.id_key + self.enc_key + self.enc_hmac_key,
+	let info = "borg-metadata-authentication-manifest"
+	let outputLength = 64
+	let key = hkdf ikm salt info outputLength
+	let hash = BA.convert $ HMAC.hmacGetDigest $ HMAC.hmac @ByteString @ByteString @SHA512 key packedPreArchive
+	pure preArchive{tam = preTAM{hmac = hash}}
+
+hkdf :: ByteString -> ByteString -> ByteString -> Int -> ByteString
+hkdf ikm salt info len = HKDF.expand (HKDF.extract @SHA512 salt ikm) info len
