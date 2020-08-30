@@ -21,6 +21,16 @@ import Generics.SOP
 
 import Types.Generics
 
+bin2Str :: Object -> Object
+bin2Str (ObjectBin b) = ObjectStr b
+bin2Str (ObjectArray bs) = ObjectArray $ map bin2Str bs
+bin2Str others = others
+
+-- |borgbackup requires obsolete ObjectStr serialization for most of its byte arrays
+mapBin2Str :: Object -> Object
+mapBin2Str (ObjectMap kvlist) = ObjectMap $ map (\(k, v) -> (bin2Str k, bin2Str v)) kvlist
+mapBin2Str x = x
+
 -- |32 bytes-long chunk identifier
 newtype ID a = ID { fromID :: ByteString } deriving (Eq, Hashable, GHC.Generic)
 instance Show (ID a) where
@@ -43,7 +53,7 @@ data TAM = TAM
 instance Generic TAM
 instance HasDatatypeInfo TAM
 instance MessagePack TAM where
-	toObject = gToObjectMap
+	toObject = mapBin2Str . gToObjectMap
 	fromObject = gFromObjectMap
 instance Default TAM where
 	def = TAM
@@ -67,7 +77,7 @@ data Archive = Archive
 instance Generic Archive
 instance HasDatatypeInfo Archive
 instance MessagePack Archive where
-	toObject = gToObjectMap
+	toObject = mapBin2Str . gToObjectMap
 	fromObject = gFromObjectMap
 
 data DescribedArchive = DescribedArchive
@@ -77,7 +87,7 @@ data DescribedArchive = DescribedArchive
 instance Generic DescribedArchive
 instance HasDatatypeInfo DescribedArchive
 instance MessagePack DescribedArchive where
-	toObject = gToObjectMap
+	toObject = mapBin2Str . gToObjectMap
 	fromObject = gFromObjectMap
 
 data Manifest = Manifest
@@ -91,7 +101,7 @@ data Manifest = Manifest
 instance Generic Manifest
 instance HasDatatypeInfo Manifest
 instance MessagePack Manifest where
-	toObject = gToObjectMap
+	toObject = mapBin2Str . gToObjectMap
 	fromObject = gFromObjectMap
 
 data DescribedChunk = DescribedChunk
@@ -119,7 +129,7 @@ instance Generic ArchiveItem
 instance HasDatatypeInfo ArchiveItem
 instance MessagePack ArchiveItem where
 	fromObject = gFromObjectMap
-	toObject = gToObjectMap
+	toObject = mapBin2Str . gToObjectMap
 
 newtype DataChunk = DataChunk Void
 

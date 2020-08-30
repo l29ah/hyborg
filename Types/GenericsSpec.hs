@@ -5,6 +5,7 @@ import Data.MessagePack
 import Test.Hspec
 
 import Types
+import Types.Generics
 
 instance MonadFail (Either String) where
 	fail = Left
@@ -16,6 +17,6 @@ spec :: Spec
 spec = do
 	describe "gToObjectMap" $ do
 		it "serializes ArchiveItem correctly" $ do
-			toObject ai `shouldBe` ObjectMap [(ObjectBin "atime",ObjectWord 1),(ObjectBin "chunks",ObjectArray []),(ObjectBin "ctime",ObjectWord 2),(ObjectBin "gid",ObjectWord 4),(ObjectBin "group",ObjectBin "5"),(ObjectBin "hardlink_master",ObjectBool True),(ObjectBin "mode",ObjectWord 8),(ObjectBin "mtime",ObjectWord 3),(ObjectBin "path",ObjectBin "9"),(ObjectBin "size",ObjectWord 10),(ObjectBin "uid",ObjectWord 6),(ObjectBin "user",ObjectBin "7")]
+			gToObjectMap ai `shouldBe` ObjectMap [(ObjectBin "atime",ObjectWord 1),(ObjectBin "chunks",ObjectArray []),(ObjectBin "ctime",ObjectWord 2),(ObjectBin "gid",ObjectWord 4),(ObjectBin "group",ObjectBin "5"),(ObjectBin "hardlink_master",ObjectBool True),(ObjectBin "mode",ObjectWord 8),(ObjectBin "mtime",ObjectWord 3),(ObjectBin "path",ObjectBin "9"),(ObjectBin "size",ObjectWord 10),(ObjectBin "uid",ObjectWord 6),(ObjectBin "user",ObjectBin "7")]
 		it "`fromObject . toObject == id` via ArchiveItem" $ do
 			(fromObject $ toObject ai) `shouldBe` (Right ai :: Either String ArchiveItem)
