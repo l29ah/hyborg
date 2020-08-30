@@ -80,6 +80,8 @@ benchmark benchmark
   import: stuff
   type: exitcode-stdio-1.0
   main-is: Benchmark.hs
+  other-modules:
+                       Chunker.Fixed
   build-depends:
                        criterion ^>= 1.5.6.2,
                        parallel ^>= 3.2.2.0,
