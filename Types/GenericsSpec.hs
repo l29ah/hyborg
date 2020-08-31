@@ -5,7 +5,6 @@ import Data.MessagePack
 import Test.Hspec
 
 import Types
-import Types.Generics
 
 instance MonadFail (Either String) where
 	fail = Left

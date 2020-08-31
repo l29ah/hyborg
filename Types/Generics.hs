@@ -1,5 +1,9 @@
 {-# LANGUAGE DeriveGeneric, TypeFamilies, ScopedTypeVariables, FlexibleContexts, TypeOperators, DataKinds, PartialTypeSignatures, TypeApplications, FlexibleInstances #-}
-module Types.Generics where
+module Types.Generics
+	( gFromObjectMap
+	, gToObjectMap
+	, toFail
+	) where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B

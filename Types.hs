@@ -1,7 +1,10 @@
 {-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, Strict #-}
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
-module Types where
+module Types
+	( module Types.Generics
+	, module Types
+	) where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
