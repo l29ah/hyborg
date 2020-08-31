@@ -114,5 +114,7 @@ hkdf :: ByteString -> ByteString -> ByteString -> Int -> ByteString
 hkdf ikm salt info len = HKDF.expand (HKDF.extract @SHA512 salt ikm) info len
 
 serialize :: MessagePack object => CryptoMethod -> object -> (ByteString, ID object)
-serialize encryption o = let serializedObject = BL.toStrict $ Object.encrypt encryption $ pack $ traceShowId $ toObject o
-	in (serializedObject, coerce $ encryption.hashID serializedObject)
+serialize encryption o =
+	let	packedObject = BL.toStrict $ pack $ toObject o
+		serializedObject = BL.toStrict $ Object.encrypt encryption $ BL.fromStrict $ packedObject
+	in (serializedObject, coerce $ encryption.hashID packedObject)

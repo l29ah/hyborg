@@ -21,6 +21,7 @@ import Options.Applicative
 import System.Posix.Files
 import System.Posix.IO
 import System.Posix.Types
+import System.Posix.User
 import Text.Printf
 
 import Cache
@@ -111,23 +112,28 @@ processCommand opts c@Create {..} = do
 		let strictChunks = map BL.toStrict chunks
 		let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
 		let chunkIDs = map (coerce . encryption.hashID) strictChunks
-		let compressedChunks = map (Object.encrypt encryption) chunks
-		let chunkCompressedSizes = map (fromIntegral . BL.length) compressedChunks
-		let group = ""	-- TODO
-		let owner = ""	-- TODO
+		let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
+		let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
+
+		let gid = fileGroup status
+		group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
+		let uid = fileOwner status
+		owner <- userName `fmap` (getUserEntryForID $ coerce uid)
+
 		let ai = ArchiveItem
 			(zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes)
 			(toNanoSeconds $ accessTime status)
 			(toNanoSeconds $ statusChangeTime status)
 			(toNanoSeconds $ modificationTime status)
-			(fromIntegral $ fileGroup status) group
-			(fromIntegral $ fileOwner status) owner
+			(fromIntegral gid) (fromString group)
+			(fromIntegral uid) (fromString owner)
 			(coerce $ fileMode status)
 			True
 			(fromString fn)
 			(fromIntegral $ fileSize status)
 		let (sai, archiveItemID) = Object.serialize encryption ai
 		cachedPut conn (sai, archiveItemID)
+		mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
 		pure archiveItemID
 		) cFiles
 	timeEnd <- UTC.getCurrentTime
