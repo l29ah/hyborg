@@ -27,6 +27,7 @@ import Types.Generics
 bin2Str :: Object -> Object
 bin2Str (ObjectBin b) = ObjectStr b
 bin2Str (ObjectArray bs) = ObjectArray $ map bin2Str bs
+bin2Str m@(ObjectMap _) = mapBin2Str m
 bin2Str others = others
 
 -- |borgbackup requires obsolete ObjectStr serialization for most of its byte arrays

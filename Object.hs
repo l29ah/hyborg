@@ -13,6 +13,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Random.MWC
+import Data.Coerce
 import Data.Default
 import Data.List
 import qualified Data.Map as M
@@ -24,6 +25,8 @@ import Compression
 import RPC
 import Types
 
+import Debug.Trace
+
 plaintext :: CryptoMethod
 plaintext = CryptoMethod
 	{ cmID = 0x02
@@ -34,10 +37,10 @@ plaintext = CryptoMethod
 
 methods = [plaintext]
 
-getMethod :: Word8 -> Maybe CryptoMethod
-getMethod mid = find (\m -> mid == cmID m) methods
+getMethod :: (MonadFail m) => Word8 -> m CryptoMethod
+getMethod mid = toFail ("no such CryptoMethod: " ++ show mid) $ find (\m -> mid == cmID m) methods
 
-decrypt :: ByteString -> Maybe ByteString
+decrypt :: (MonadFail m) => ByteString -> m ByteString
 decrypt dat =
 	let (encryptionType, encryptedData) = B.splitAt 1 dat in
 	-- src/borg/crypto/key.py
@@ -49,7 +52,10 @@ encrypt :: CryptoMethod -> BL.ByteString -> BL.ByteString
 encrypt method dat = BL.concat [BL.pack [method.cmID], method.encrypt $ compress $ BL.toStrict dat]
 
 readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
-readManifest = unpack . BL.fromStrict . fromJust . decrypt
+readManifest serialized = do
+	decrypted <- decrypt serialized
+	obj <- unpack $ BL.fromStrict decrypted
+	fromObject $ traceShowId obj
 
 listArchives :: Manifest -> [(ByteString, ID Archive, ByteString)]
 listArchives manifest = map (\(name, describedArchive) -> (name, describedArchive._id, describedArchive.time)) $ M.toList manifest.archives
@@ -73,18 +79,39 @@ getArchiveItem conn cid = do
 	idata <- get conn cid
 	unpack $ BL.fromStrict $ fromJust $ decrypt idata
 
-addTAM :: Archive -> IO Archive
-addTAM archive = do
+makeKey salt context = salt <> context
+
+hMAC key dat = BA.convert $ HMAC.hmacGetDigest $ HMAC.hmac @ByteString @ByteString @SHA512 key dat
+
+addTAMm :: Manifest -> IO Manifest
+addTAMm m = do
+	salt <- random 64
+	let preTAM = def{salt = salt}
+	let preM = m{tam = preTAM}
+	let packedPreM = BL.toStrict $ pack preM
+	let context = "manifest"
+	let key = makeKey preTAM.salt context
+	let hash = hMAC key packedPreM
+	pure preM{tam = preTAM{hmac = hash}}
+
+addTAMa :: Archive -> IO Archive
+addTAMa archive = do
 	salt <- random 64
 	let preTAM = def{salt = salt}
 	let preArchive = archive{tam = preTAM}
 	let packedPreArchive = BL.toStrict $ pack preArchive
-	let ikm = undefined -- TODO self.id_key + self.enc_key + self.enc_hmac_key,
-	let info = "borg-metadata-authentication-manifest"
-	let outputLength = 64
-	let key = hkdf ikm salt info outputLength
-	let hash = BA.convert $ HMAC.hmacGetDigest $ HMAC.hmac @ByteString @ByteString @SHA512 key packedPreArchive
+	let context = "manifest"
+	-- TODO let ikm = self.id_key + self.enc_key + self.enc_hmac_key,
+	-- let info = "borg-metadata-authentication-manifest"
+	-- let outputLength = 64
+	-- let key = hkdf ikm salt info outputLength
+	let key = makeKey preTAM.salt context
+	let hash = hMAC key packedPreArchive
 	pure preArchive{tam = preTAM{hmac = hash}}
 
 hkdf :: ByteString -> ByteString -> ByteString -> Int -> ByteString
 hkdf ikm salt info len = HKDF.expand (HKDF.extract @SHA512 salt ikm) info len
+
+serialize :: MessagePack object => CryptoMethod -> object -> (ByteString, ID object)
+serialize encryption o = let serializedObject = BL.toStrict $ Object.encrypt encryption $ pack $ traceShowId $ toObject o
+	in (serializedObject, coerce $ encryption.hashID serializedObject)

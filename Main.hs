@@ -11,6 +11,8 @@ import Data.Coerce
 import Data.DateTime
 import Data.Default
 import Data.List
+import qualified Data.Map as M
+import Data.MessagePack
 import Data.String.Class
 import Data.Word
 import Foreign.C.Types
@@ -95,17 +97,19 @@ processCommand opts c@Create {..} = do
 	when (B.null repoPath) $ error "no repository specified"
 	when (B.null archiveName) $ error "no archive name specified"
 	(conn, id, manifest) <- connectToRepo repoPath True
+	when (M.member archiveName manifest.archives) $ error $ "archive " ++ toString archiveName ++ " already exists"
 	fileCache <- readCache id
-	mapM_ (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+	let chunkerSettings = def	-- TODO settable chunker settings
+	let encryption = plaintext	-- TODO other encryption schemes
+	-- TODO parallelism
+	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
 		status <- getFdStatus fd
 		-- TODO check if the file is backed up already via cache
-		chunks <- chunkifyFile def fd	-- TODO settable chunker settings
+		chunks <- chunkifyFile chunkerSettings fd
 		let strictChunks = map BL.toStrict chunks
 		let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
-		-- TODO other encryption schemes
-		let hasher = coerce . plaintext.hashID
-		let chunkIDs = map hasher strictChunks
-		let compressedChunks = map (Object.encrypt plaintext) chunks
+		let chunkIDs = map (coerce . encryption.hashID) strictChunks
+		let compressedChunks = map (Object.encrypt encryption) chunks
 		let chunkCompressedSizes = map (fromIntegral . BL.length) compressedChunks
 		let group = ""	-- TODO
 		let owner = ""	-- TODO
@@ -120,9 +124,37 @@ processCommand opts c@Create {..} = do
 			True
 			(fromString fn)
 			(fromIntegral $ fileSize status)
-		print ai
-		pure ()
+		let (sai, archiveItemID) = Object.serialize encryption ai
+		cachedPut conn (sai, archiveItemID)
+		pure archiveItemID
 		) cFiles
+	let arch = Archive
+		{ chunkerParams = (fromIntegral chunkerSettings.minExp, fromIntegral chunkerSettings.maxExp, fromIntegral chunkerSettings.maskBits, fromIntegral chunkerSettings.windowSize)
+		, cmdline = ["TODO"]
+		, comment = "TODO"
+		, hostname = "TODO"
+		, items = archiveItemIDs
+		, name = archiveName
+		, tam = def	-- TODO good one in case of encrypted backups
+		, time = "TODO"
+		, timeEnd = "TODO"
+		, username = "TODO"
+		, version = 1
+		}
+	print arch
+	let (serializedArch, archID) = Object.serialize encryption arch
+	cachedPut conn (serializedArch, archID)
+	let archiveDesc = DescribedArchive
+		{ _id = archID
+		, time = "TODO"
+		}
+	-- TODO preserve the ordering of the existing archive entries?
+	let newManifest = manifest{archives = M.insert archiveName archiveDesc manifest.archives}
+	authenticatedManifest <- addTAMm newManifest
+	print manifest
+	print authenticatedManifest
+	cachedPut conn (fst $ Object.serialize encryption authenticatedManifest, repoManifest)
+	commit conn
 processCommand opts List {..} = do
 	let (repoPath, archiveName) = parseAddress lRepoArchive
 	(conn, _, manifest) <- connectToRepo repoPath False
