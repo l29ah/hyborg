@@ -49,8 +49,9 @@ instance MessagePack (ID a) where
 	fromObject _ = fail "wrong messagepack type for ID"
 
 instance MessagePack UTCTime where
+	-- FIXME we do not serialize %Q as borg is pissed at fractions longer than 6 decimal places
 	toObject = toObject . T.pack . formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S"
-	fromObject x = (toFail "invalid time format" . parseTimeM False defaultTimeLocale "%Y-%m-%dT%H:%M:%S" . T.unpack) =<< fromObject x
+	fromObject x = (toFail "invalid time format" . parseTimeM False defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" . T.unpack) =<< fromObject x
 
 -- |Phantom data type to parametrize ID with
 data Repository
@@ -102,7 +103,7 @@ instance MessagePack DescribedArchive where
 
 data Manifest = Manifest
 	{ version :: Int
-	, timestamp :: ByteString
+	, timestamp :: UTCTime
 	, itemKeys :: [ByteString]
 	, config :: Object
 	, archives :: Map ByteString DescribedArchive

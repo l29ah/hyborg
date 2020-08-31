@@ -158,7 +158,7 @@ processCommand opts c@Create {..} = do
 		, time = timeBegin
 		}
 	-- TODO preserve the ordering of the existing archive entries?
-	let newManifest = manifest{archives = M.insert archiveName archiveDesc manifest.archives}
+	let newManifest = manifest{archives = M.insert archiveName archiveDesc manifest.archives, timestamp = timeEnd}
 	authenticatedManifest <- addTAMm newManifest
 	print manifest
 	print authenticatedManifest
