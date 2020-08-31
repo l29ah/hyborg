@@ -17,6 +17,8 @@ import Data.Int
 import Data.Map (Map)
 import Data.MessagePack.Types
 import Data.String.Class
+import qualified Data.Text as T
+import Data.Time
 import Data.Void
 import Data.Word
 import qualified GHC.Generics as GHC
@@ -46,6 +48,10 @@ instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"
 
+instance MessagePack UTCTime where
+	toObject = toObject . T.pack . formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S"
+	fromObject x = (toFail "invalid time format" . parseTimeM False defaultTimeLocale "%Y-%m-%dT%H:%M:%S" . T.unpack) =<< fromObject x
+
 -- |Phantom data type to parametrize ID with
 data Repository
 
@@ -73,8 +79,8 @@ data Archive = Archive
 	, items :: [ID ArchiveItem]
 	, name :: ByteString
 	, tam :: TAM
-	, time :: ByteString
-	, timeEnd :: ByteString
+	, time :: UTCTime
+	, timeEnd :: UTCTime
 	, username :: ByteString
 	, version :: Word
 	} deriving (Eq, Show, GHC.Generic)
@@ -86,7 +92,7 @@ instance MessagePack Archive where
 
 data DescribedArchive = DescribedArchive
 	{ _id :: ID Archive
-	, time :: ByteString
+	, time :: UTCTime
 	} deriving (Eq, Show, GHC.Generic)
 instance Generic DescribedArchive
 instance HasDatatypeInfo DescribedArchive

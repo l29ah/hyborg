@@ -19,6 +19,7 @@ import Data.List
 import qualified Data.Map as M
 import Data.Maybe
 import Data.MessagePack
+import Data.Time
 import Data.Word
 
 import Compression
@@ -57,7 +58,7 @@ readManifest serialized = do
 	obj <- unpack $ BL.fromStrict decrypted
 	fromObject $ traceShowId obj
 
-listArchives :: Manifest -> [(ByteString, ID Archive, ByteString)]
+listArchives :: Manifest -> [(ByteString, ID Archive, UTCTime)]
 listArchives manifest = map (\(name, describedArchive) -> (name, describedArchive._id, describedArchive.time)) $ M.toList manifest.archives
 
 getArchive :: RPCHandle -> ID Archive -> IO Archive

@@ -14,6 +14,7 @@ import Data.List
 import qualified Data.Map as M
 import Data.MessagePack
 import Data.String.Class
+import qualified Data.Time as UTC
 import Data.Word
 import Foreign.C.Types
 import Options.Applicative
@@ -98,6 +99,7 @@ processCommand opts c@Create {..} = do
 	when (B.null archiveName) $ error "no archive name specified"
 	(conn, id, manifest) <- connectToRepo repoPath True
 	when (M.member archiveName manifest.archives) $ error $ "archive " ++ toString archiveName ++ " already exists"
+	timeBegin <- UTC.getCurrentTime
 	fileCache <- readCache id
 	let chunkerSettings = def	-- TODO settable chunker settings
 	let encryption = plaintext	-- TODO other encryption schemes
@@ -128,6 +130,7 @@ processCommand opts c@Create {..} = do
 		cachedPut conn (sai, archiveItemID)
 		pure archiveItemID
 		) cFiles
+	timeEnd <- UTC.getCurrentTime
 	let arch = Archive
 		{ chunkerParams = (fromIntegral chunkerSettings.minExp, fromIntegral chunkerSettings.maxExp, fromIntegral chunkerSettings.maskBits, fromIntegral chunkerSettings.windowSize)
 		, cmdline = ["TODO"]
@@ -136,8 +139,8 @@ processCommand opts c@Create {..} = do
 		, items = archiveItemIDs
 		, name = archiveName
 		, tam = def	-- TODO good one in case of encrypted backups
-		, time = "TODO"
-		, timeEnd = "TODO"
+		, time = timeBegin
+		, timeEnd = timeEnd
 		, username = "TODO"
 		, version = 1
 		}
@@ -146,7 +149,7 @@ processCommand opts c@Create {..} = do
 	cachedPut conn (serializedArch, archID)
 	let archiveDesc = DescribedArchive
 		{ _id = archID
-		, time = "TODO"
+		, time = timeBegin
 		}
 	-- TODO preserve the ordering of the existing archive entries?
 	let newManifest = manifest{archives = M.insert archiveName archiveDesc manifest.archives}
@@ -162,7 +165,7 @@ processCommand opts List {..} = do
 		-- list all the archives present in the repo
 		let archs = listArchives manifest
 		mapM_ (\(archiveName, archiveID, time) -> do
-			printf "%-36s %s [%s]\n" (toString archiveName) (toString time) (toString archiveID)
+			printf "%-36s %s [%s]\n" (toString archiveName) (show time) (toString archiveID)
 			) archs
 	else do
 		-- list files in the archive

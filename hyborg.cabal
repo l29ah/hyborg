@@ -51,6 +51,7 @@ common stuff
                        random-bytestring ^>= 0.1.3.2,
                        cryptonite >= 0.26 && < 0.28,
                        memory ^>= 0.15.0,
+                       time ^>= 1.9.3,
   default-language:    Haskell2010
   other-modules:
                        Cache
