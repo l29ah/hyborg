@@ -12,12 +12,12 @@ import Data.DateTime
 import Data.Default
 import Data.List
 import qualified Data.Map as M
-import Data.MessagePack
-import Data.String.Class
+import Data.String.Class hiding (concat)
 import qualified Data.Time as UTC
 import Data.Word
 import Foreign.C.Types
 import Options.Applicative
+import System.Directory
 import System.Posix.Files
 import System.Posix.IO
 import System.Posix.Types
@@ -88,6 +88,58 @@ parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring
 toNanoSeconds :: CTime -> Word64
 toNanoSeconds (CTime t) = 1000000000 * fromIntegral t
 
+
+archiveDir conn chunkerSettings encryption fn = do
+	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
+	files <- listDirectory fn
+	archiveFiles conn chunkerSettings encryption $ map (\file -> fn ++ "/" ++ file) files
+
+archiveFiles conn chunkerSettings encryption filenames = do
+	-- TODO parallelism
+	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+		status <- getFdStatus fd
+		-- |archive a chunked directory entry
+		let archiveEntry chunks = do
+			let strictChunks = map BL.toStrict chunks
+			let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
+			let chunkIDs = map (coerce . encryption.hashID) strictChunks
+			let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
+			let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
+
+			let gid = fileGroup status
+			group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
+			let uid = fileOwner status
+			owner <- userName `fmap` (getUserEntryForID $ coerce uid)
+
+			let ai = ArchiveItem
+				(zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes)
+				(toNanoSeconds $ accessTime status)
+				(toNanoSeconds $ statusChangeTime status)
+				(toNanoSeconds $ modificationTime status)
+				(fromIntegral gid) (fromString group)
+				(fromIntegral uid) (fromString owner)
+				(coerce $ fileMode status)
+				True
+				(fromString fn)
+				(fromIntegral $ fileSize status)
+			let (sai, archiveItemID) = Object.serialize encryption ai
+			cachedPut conn (sai, archiveItemID)
+			mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
+			pure archiveItemID
+		if isDirectory status then do
+			-- archive the directory contents
+			contents <- archiveDir conn chunkerSettings encryption fn
+			-- and then the directory itself
+			directory <- archiveEntry []
+			pure $ directory:contents
+		else do
+			-- TODO check if the file is backed up already via cache
+			chunks <- chunkifyFile chunkerSettings fd
+			file <- archiveEntry chunks
+			pure [file]
+		) filenames
+	pure $ concat archiveItemIDs
+
 processCommand :: Options -> Command -> IO ()
 processCommand opts Info {..} = do
 	let (repoPath, archiveName) = parseAddress iRepo
@@ -104,38 +156,7 @@ processCommand opts c@Create {..} = do
 	fileCache <- readCache id
 	let chunkerSettings = def	-- TODO settable chunker settings
 	let encryption = plaintext	-- TODO other encryption schemes
-	-- TODO parallelism
-	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
-		status <- getFdStatus fd
-		-- TODO check if the file is backed up already via cache
-		chunks <- chunkifyFile chunkerSettings fd
-		let strictChunks = map BL.toStrict chunks
-		let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
-		let chunkIDs = map (coerce . encryption.hashID) strictChunks
-		let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
-		let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
-
-		let gid = fileGroup status
-		group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
-		let uid = fileOwner status
-		owner <- userName `fmap` (getUserEntryForID $ coerce uid)
-
-		let ai = ArchiveItem
-			(zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes)
-			(toNanoSeconds $ accessTime status)
-			(toNanoSeconds $ statusChangeTime status)
-			(toNanoSeconds $ modificationTime status)
-			(fromIntegral gid) (fromString group)
-			(fromIntegral uid) (fromString owner)
-			(coerce $ fileMode status)
-			True
-			(fromString fn)
-			(fromIntegral $ fileSize status)
-		let (sai, archiveItemID) = Object.serialize encryption ai
-		cachedPut conn (sai, archiveItemID)
-		mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
-		pure archiveItemID
-		) cFiles
+	archiveItemIDs <- archiveFiles conn chunkerSettings encryption cFiles
 	timeEnd <- UTC.getCurrentTime
 	let arch = Archive
 		{ chunkerParams = (fromIntegral chunkerSettings.minExp, fromIntegral chunkerSettings.maxExp, fromIntegral chunkerSettings.maskBits, fromIntegral chunkerSettings.windowSize)
