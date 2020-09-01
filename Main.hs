@@ -88,6 +88,9 @@ parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring
 toNanoSeconds :: CTime -> Word64
 toNanoSeconds (CTime t) = 1000000000 * fromIntegral t
 
+-- |borg doesn't like absolute paths
+stripSlash ('/':xs) = xs
+stripSlash xs = xs
 
 archiveDir conn chunkerSettings encryption fn = do
 	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
@@ -120,7 +123,7 @@ archiveFiles conn chunkerSettings encryption filenames = do
 				(fromIntegral uid) (fromString owner)
 				(coerce $ fileMode status)
 				True
-				(fromString fn)
+				(fromString $ stripSlash fn)
 				(fromIntegral $ fileSize status)
 			let (sai, archiveItemID) = Object.serialize encryption ai
 			cachedPut conn (sai, archiveItemID)
