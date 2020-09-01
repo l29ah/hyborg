@@ -146,7 +146,6 @@ processCommand opts Info {..} = do
 	(conn, _, manifest) <- connectToRepo repoPath False
 	getArchives conn manifest
 processCommand opts c@Create {..} = do
-	print c
 	let (repoPath, archiveName) = parseAddress cArchive
 	when (B.null repoPath) $ error "no repository specified"
 	when (B.null archiveName) $ error "no archive name specified"
@@ -171,7 +170,6 @@ processCommand opts c@Create {..} = do
 		, username = "TODO"
 		, version = 1
 		}
-	print arch
 	let (serializedArch, archID) = Object.serialize encryption arch
 	cachedPut conn (serializedArch, archID)
 	let archiveDesc = DescribedArchive
@@ -181,8 +179,6 @@ processCommand opts c@Create {..} = do
 	-- TODO preserve the ordering of the existing archive entries?
 	let newManifest = manifest{archives = M.insert archiveName archiveDesc manifest.archives, timestamp = timeEnd}
 	authenticatedManifest <- addTAMm newManifest
-	print manifest
-	print authenticatedManifest
 	cachedPut conn (fst $ Object.serialize encryption authenticatedManifest, repoManifest)
 	commit conn
 processCommand opts List {..} = do

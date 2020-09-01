@@ -26,8 +26,6 @@ import Compression
 import RPC
 import Types
 
-import Debug.Trace
-
 plaintext :: CryptoMethod
 plaintext = CryptoMethod
 	{ cmID = 0x02
@@ -56,7 +54,7 @@ readManifest :: (Fail.MonadFail m) => ByteString -> m Manifest
 readManifest serialized = do
 	decrypted <- decrypt serialized
 	obj <- unpack $ BL.fromStrict decrypted
-	fromObject $ traceShowId obj
+	fromObject obj
 
 listArchives :: Manifest -> [(ByteString, ID Archive, UTCTime)]
 listArchives manifest = map (\(name, describedArchive) -> (name, describedArchive._id, describedArchive.time)) $ M.toList manifest.archives
