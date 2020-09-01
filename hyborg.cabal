@@ -53,6 +53,8 @@ common stuff
                        memory ^>= 0.15.0,
                        time ^>= 1.9.3,
                        directory ^>= 1.3.6,
+                       stm ^>= 2.5,
+                       stm-conduit ^>= 4.0.1,
   default-language:    Haskell2010
   other-modules:
                        Cache

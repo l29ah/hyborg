@@ -1,15 +1,16 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
 module RPC where
 
+import Conduit
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Exception
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.Conduit
-import qualified Data.Conduit.List as CL
 import Data.Conduit.Process
 import Data.Conduit.Serialization.Binary
+import Data.Conduit.TQueue
 import Data.Functor
 import Data.Map (Map, (!))
 import qualified Data.Map as M
@@ -43,33 +44,33 @@ data RPCOldResponse a = RPCOldResponse
 	} deriving (Show, Generic)
 instance (MessagePack a) => MessagePack (RPCOldResponse a)
 
-type RPCHandle = (Chan Object, Chan Object)
+type RPCHandle = (TBQueue Object, TBQueue Object)
 
 openRPC :: IO RPCHandle
 openRPC = do
 	userRsh <- lookupEnv "BORG_RSH"
 	--let rsh = fromMaybe "ssh" userRsh
 	let rsh = fromJust userRsh
-	stdin <- newChan
-	stdout <- newChan
-	stdinContents <- getChanContents stdin
+	let queueLength = 20
+	stdin <- newTBQueueIO queueLength
+	stdout <- newTBQueueIO queueLength
 	let cp = (shell rsh) { std_err = Inherit }
-	let outputConsumer = conduitDecode .| (CL.mapM_ $ writeChan stdout)
-	let inputProducer = CL.sourceList $ map (BL.toStrict . pack) $ stdinContents
+	let outputConsumer = conduitDecode .| sinkTBQueue stdout
+	let inputProducer =  sourceTBQueue stdin .| mapC (BL.toStrict . pack)
 	forkIO $ void $ sourceProcessWithStreams cp inputProducer outputConsumer (pure ())
 	pure (stdin, stdout)
 
 
 sendOldRequest :: (MessagePack a) => RPCHandle -> Text -> Map Text a -> IO ()
-sendOldRequest conn method args = writeChan (fst conn) $ toObject $ RPCOldRequest 1 0 method [args]
+sendOldRequest conn method args = atomically $ writeTBQueue (fst conn) $ toObject $ RPCOldRequest 1 0 method [args]
 
 receiveOldResponse :: (MessagePack a) => RPCHandle -> IO (RPCOldResponse a)
 receiveOldResponse conn = do
-	resp <- readChan $ snd conn
+	resp <- atomically $ readTBQueue $ snd conn
 	fromObject resp
 
 sendRequest :: (MessagePack a) => RPCHandle -> ByteString -> Map Text a -> IO ()
-sendRequest conn method args = writeChan (fst conn) $ ObjectMap
+sendRequest conn method args = atomically $ writeTBQueue (fst conn) $ ObjectMap
 	[ (ObjectStr "i", ObjectWord id)
 	, (ObjectStr "m", ObjectStr method)
 	, (ObjectStr "a", toObject args)
@@ -77,7 +78,7 @@ sendRequest conn method args = writeChan (fst conn) $ ObjectMap
 
 receiveResponse :: RPCHandle -> IO ByteString
 receiveResponse conn = do
-	resp <- readChan $ snd conn
+	resp <- atomically $ readTBQueue $ snd conn
 	respMap :: Map ByteString Object <- fromObject resp
 	let ObjectStr result = respMap ! ("r" :: ByteString)
 	pure result
