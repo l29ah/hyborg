@@ -15,8 +15,11 @@ import Data.HashMap.Strict (HashMap)
 import Data.Hashable
 import Data.Int
 import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe
 import Data.MessagePack.Types
 import Data.String.Class
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
 import Data.Void
@@ -123,8 +126,7 @@ data DescribedChunk = DescribedChunk
 instance MessagePack DescribedChunk
 
 data ArchiveItem = ArchiveItem
-	{ chunks :: [DescribedChunk]
-	, atime :: Word64
+	{ atime :: Word64
 	, ctime :: Word64
 	, mtime :: Word64
 	, gid :: Word32
@@ -132,15 +134,50 @@ data ArchiveItem = ArchiveItem
 	, uid :: Word32
 	, user :: ByteString
 	, mode :: Word32
-	, hardlinkMaster :: Bool
+	, hardlinkMaster :: Maybe Bool
 	, path :: ByteString
 	, size :: Word64
+	, chunks :: Maybe [DescribedChunk]
+	, source :: Maybe FilePath
 	} deriving (Eq, Show, GHC.Generic)
 instance Generic ArchiveItem
 instance HasDatatypeInfo ArchiveItem
 instance MessagePack ArchiveItem where
-	fromObject = gFromObjectMap
-	toObject = mapBin2Str . gToObjectMap
+	fromObject obj = do
+		m :: Map Text Object <- fromObject obj
+		let	look :: (MonadFail m, MessagePack a) => Text -> m a
+			look k = fromObject =<< (toFail ("no field " ++ T.unpack k ++ " present in MessagePack") $ M.lookup k m)
+			mbLook :: (MonadFail m, MessagePack a) => Text -> m (Maybe a)
+			mbLook k = pure $ fromObject =<< (M.lookup k m)
+			justLook k d = pure $ fromMaybe d $ fromObject =<< (M.lookup k m)
+		ArchiveItem
+			<$> look "atime"
+			<*> look "ctime"
+			<*> look "mtime"
+			<*> look "gid"
+			<*> look "group"
+			<*> look "uid"
+			<*> look "user"
+			<*> look "mode"
+			<*> mbLook "hardlink_master"
+			<*> look "path"
+			<*> justLook "size" 0
+			<*> mbLook "chunks"
+			<*> mbLook "source"
+	toObject ai = mapBin2Str $ toObject $ M.fromList $
+		[ ("atime" :: Text, toObject ai.atime)
+		, ("ctime", toObject ai.ctime)
+		, ("mtime", toObject ai.mtime)
+		, ("gid", toObject ai.gid)
+		, ("uid", toObject ai.uid)
+		, ("user", toObject ai.user)
+		, ("group", toObject ai.group)
+		, ("mode", toObject ai.mode)
+		, ("hardlink_master", toObject ai.hardlinkMaster)
+		, ("path", toObject ai.path)
+		, ("size", toObject ai.size)
+		] ++ maybe [] (\ch -> pure ("chunks", toObject ch)) ai.chunks
+		++ maybe [] (\so -> pure ("source", toObject so)) ai.source
 
 newtype DataChunk = DataChunk Void
 

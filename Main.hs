@@ -12,12 +12,13 @@ import Data.DateTime
 import Data.Default
 import Data.List
 import qualified Data.Map as M
-import Data.String.Class hiding (concat)
+import Data.String.Class hiding (concat, null)
 import qualified Data.Time as UTC
 import Data.Word
+import Data.MessagePack.Types
 import Foreign.C.Types
 import Options.Applicative
-import System.Directory
+import System.Directory hiding (isSymbolicLink)
 import System.Posix.Files
 import System.Posix.IO
 import System.Posix.Types
@@ -100,45 +101,51 @@ archiveDir conn chunkerSettings encryption fn = do
 archiveFiles conn chunkerSettings encryption filenames = do
 	-- TODO parallelism
 	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
-		status <- getFdStatus fd
+		status <- getSymbolicLinkStatus fn
 		-- |archive a chunked directory entry
-		let archiveEntry chunks = do
-			let strictChunks = map BL.toStrict chunks
-			let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
-			let chunkIDs = map (coerce . encryption.hashID) strictChunks
-			let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
-			let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
+		let	archiveEntry :: [BL.ByteString] -> Maybe FilePath -> IO (ID ArchiveItem)
+			archiveEntry chunks maybeSource = do
+				let strictChunks = map BL.toStrict chunks
+				let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
+				let chunkIDs = map (coerce . encryption.hashID) strictChunks
+				let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
+				let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
 
-			let gid = fileGroup status
-			group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
-			let uid = fileOwner status
-			owner <- userName `fmap` (getUserEntryForID $ coerce uid)
+				let gid = fileGroup status
+				group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
+				let uid = fileOwner status
+				owner <- userName `fmap` (getUserEntryForID $ coerce uid)
 
-			let ai = ArchiveItem
-				(zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes)
-				(toNanoSeconds $ accessTime status)
-				(toNanoSeconds $ statusChangeTime status)
-				(toNanoSeconds $ modificationTime status)
-				(fromIntegral gid) (fromString group)
-				(fromIntegral uid) (fromString owner)
-				(coerce $ fileMode status)
-				True
-				(fromString $ stripSlash fn)
-				(fromIntegral $ fileSize status)
-			let (sai, archiveItemID) = Object.serialize encryption ai
-			cachedPut conn (sai, archiveItemID)
-			mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
-			pure archiveItemID
+				let ai = ArchiveItem
+					(toNanoSeconds $ accessTime status)
+					(toNanoSeconds $ statusChangeTime status)
+					(toNanoSeconds $ modificationTime status)
+					(fromIntegral gid) (fromString group)
+					(fromIntegral uid) (fromString owner)
+					(coerce $ fileMode status)
+					Nothing
+					(fromString $ stripSlash fn)
+					(fromIntegral $ fileSize status)
+					(if null chunks then Nothing else Just (zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes))
+					maybeSource
+				let (sai, archiveItemID) = Object.serialize encryption ai
+				cachedPut conn (sai, archiveItemID)
+				mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
+				pure $ coerce archiveItemID
 		if isDirectory status then do
 			-- archive the directory contents
 			contents <- archiveDir conn chunkerSettings encryption fn
 			-- and then the directory itself
-			directory <- archiveEntry []
+			directory <- archiveEntry [] Nothing
 			pure $ directory:contents
+		else if isSymbolicLink status then do
+			contents <- readSymbolicLink fn
+			file <- archiveEntry [] $ Just contents
+			pure [file]
 		else do
 			-- TODO check if the file is backed up already via cache
 			chunks <- chunkifyFile chunkerSettings fd
-			file <- archiveEntry chunks
+			file <- archiveEntry chunks Nothing
 			pure [file]
 		) filenames
 	pure $ concat archiveItemIDs
