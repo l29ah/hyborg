@@ -96,6 +96,17 @@ toNanoSeconds (CTime t) = 1000000000 * fromIntegral t
 stripSlash ('/':xs) = xs
 stripSlash xs = xs
 
+archiveChunk :: RPCHandle -> CryptoMethod -> BL.ByteString -> IO DescribedChunk
+archiveChunk conn encryption chunk = do
+	let strictChunk = BL.toStrict chunk
+	let chunkUncompressedSize = (fromIntegral . B.length) strictChunk
+	let chunkID = (coerce . encryption.hashID) strictChunk
+	let compressedChunk = (BL.toStrict . Object.encrypt encryption) chunk
+	let chunkCompressedSize = (fromIntegral . B.length) compressedChunk
+	-- store the chunk data on the server
+	cachedPut conn (compressedChunk, chunkID)
+	pure $ DescribedChunk chunkID chunkUncompressedSize chunkCompressedSize
+
 archiveDir conn cmd chunkerSettings encryption fn = do
 	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
 	files <- listDirectory fn
@@ -109,11 +120,8 @@ archiveFiles conn cmd chunkerSettings encryption filenames = do
 		-- |archive a chunked directory entry
 		let	archiveEntry :: [BL.ByteString] -> Maybe FilePath -> IO (ID ArchiveItem)
 			archiveEntry chunks maybeSource = do
-				let strictChunks = map BL.toStrict chunks
-				let chunkUncompressedSizes = map (fromIntegral . B.length) strictChunks
-				let chunkIDs = map (coerce . encryption.hashID) strictChunks
-				let compressedChunks = map (BL.toStrict . Object.encrypt encryption) chunks
-				let chunkCompressedSizes = map (fromIntegral . B.length) compressedChunks
+				-- store the file data on the server
+				describedChunks <- mapM (archiveChunk conn encryption) chunks
 
 				let gid = fileGroup status
 				group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
@@ -130,11 +138,10 @@ archiveFiles conn cmd chunkerSettings encryption filenames = do
 					Nothing
 					(fromString $ stripSlash fn)
 					(fromIntegral $ fileSize status)
-					(if null chunks then Nothing else Just (zipWith3 DescribedChunk chunkIDs chunkUncompressedSizes chunkCompressedSizes))
+					(if null describedChunks then Nothing else Just describedChunks)
 					maybeSource
 				let (sai, archiveItemID) = Object.serialize encryption ai
 				cachedPut conn (sai, archiveItemID)
-				mapM_ (cachedPut conn) $ zip compressedChunks chunkIDs
 				pure $ coerce archiveItemID
 		if isDirectory status then do
 			-- archive the directory contents
