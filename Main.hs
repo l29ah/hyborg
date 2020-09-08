@@ -18,6 +18,7 @@ import Data.Word
 import Data.MessagePack.Types
 import Foreign.C.Types
 import Options.Applicative
+import Prelude hiding (putStrLn)
 import System.Directory hiding (isSymbolicLink)
 import System.Posix.Files
 import System.Posix.IO
@@ -34,6 +35,7 @@ import Types
 data Command =
 	Create
 		{ cProgress :: Bool
+		, cList :: Bool
 		, cArchive :: B.ByteString
 		, cFiles :: [FilePath]
 		}
@@ -62,6 +64,7 @@ commandParser = hsubparser $
 		) (progDesc "show repo info"))
 	<> (command "create" $ info (Create
 		<$> switch (long "progress")
+		<*> switch (long "list")
 		<*> strArgument (metavar "ARCHIVE" <> help "archive name")
 		<*> some (strArgument (metavar "PATH..." <> help "file path"))
 		) (progDesc "create a new backup"))
@@ -93,15 +96,16 @@ toNanoSeconds (CTime t) = 1000000000 * fromIntegral t
 stripSlash ('/':xs) = xs
 stripSlash xs = xs
 
-archiveDir conn chunkerSettings encryption fn = do
+archiveDir conn cmd chunkerSettings encryption fn = do
 	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
 	files <- listDirectory fn
-	archiveFiles conn chunkerSettings encryption $ map (\file -> fn ++ "/" ++ file) files
+	archiveFiles conn cmd chunkerSettings encryption $ map (\file -> fn ++ "/" ++ file) files
 
-archiveFiles conn chunkerSettings encryption filenames = do
+archiveFiles conn cmd chunkerSettings encryption filenames = do
 	-- TODO parallelism
 	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
 		status <- getSymbolicLinkStatus fn
+		when (cmd.cList) $ putStrLn $ "A " ++ fn
 		-- |archive a chunked directory entry
 		let	archiveEntry :: [BL.ByteString] -> Maybe FilePath -> IO (ID ArchiveItem)
 			archiveEntry chunks maybeSource = do
@@ -134,7 +138,7 @@ archiveFiles conn chunkerSettings encryption filenames = do
 				pure $ coerce archiveItemID
 		if isDirectory status then do
 			-- archive the directory contents
-			contents <- archiveDir conn chunkerSettings encryption fn
+			contents <- archiveDir conn cmd chunkerSettings encryption fn
 			-- and then the directory itself
 			directory <- archiveEntry [] Nothing
 			pure $ directory:contents
@@ -165,7 +169,7 @@ processCommand opts c@Create {..} = do
 	fileCache <- readCache id
 	let chunkerSettings = def	-- TODO settable chunker settings
 	let encryption = plaintext	-- TODO other encryption schemes
-	archiveItemIDs <- archiveFiles conn chunkerSettings encryption cFiles
+	archiveItemIDs <- archiveFiles conn c chunkerSettings encryption cFiles
 	timeEnd <- UTC.getCurrentTime
 	let arch = Archive
 		{ chunkerParams = (fromIntegral chunkerSettings.minExp, fromIntegral chunkerSettings.maxExp, fromIntegral chunkerSettings.maskBits, fromIntegral chunkerSettings.windowSize)
