@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, Strict #-}
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
-{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 module Types
 	( module Types.Generics
 	, module Types

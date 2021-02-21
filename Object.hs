@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
-{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 module Object where
 
 import qualified Control.Monad.Fail as Fail
