@@ -5,10 +5,12 @@ import Crypto.Hash.Algorithms
 import Crypto.MAC.HMAC
 import Data.ByteArray
 import Data.ByteString (ByteString)
+import Test.QuickCheck.Instances.ByteString ()
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
 import Test.Hspec
+import Test.QuickCheck
 
 import Object
 
@@ -18,7 +20,9 @@ str = BL.take 6666666 $ BL.cycle "our fancy test string"
 spec :: Spec
 spec = do
 	describe "plaintext crypto (and lz4)" $ do
-		it "decrypt . encrypt == id" $ do
+		it "decrypt . encrypt == id" $ property $
+			\s -> (decrypt $ BL.toStrict $ encrypt plaintext s) `shouldBe` Just (BL.toStrict s)
+		it "decrypt . encrypt == id, a long hardcoded string" $ do
 			(decrypt $ BL.toStrict $ encrypt plaintext str) `shouldBe` Just (BL.toStrict str)
 	describe "HMAC" $ do
 		it "compatible with borg impl" $ do

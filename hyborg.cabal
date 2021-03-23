@@ -75,7 +75,8 @@ test-suite spec
   main-is: Spec.hs
   build-depends:
                        hspec == 2.*,
-  build-tool-depends:  hspec-discover:hspec-discover == 2.*
+                       QuickCheck ^>= 2.14.2,
+                       quickcheck-instances ^>= 0.3.25.2
   other-modules:
                        Chunker.BuzHashSpec
                        ObjectSpec
