@@ -12,7 +12,6 @@ import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.ByteString.Random.MWC
 import Data.Coerce
 import Data.Default
 import Data.List
@@ -21,6 +20,7 @@ import Data.Maybe
 import Data.MessagePack
 import Data.Time
 import Data.Word
+import System.Entropy
 
 import Compression
 import RPC
@@ -84,7 +84,7 @@ hMAC key dat = BA.convert $ HMAC.hmacGetDigest $ HMAC.hmac @ByteString @ByteStri
 
 addTAMm :: Manifest -> IO Manifest
 addTAMm m = do
-	salt <- random 64
+	salt <- getEntropy 64
 	let preTAM = def{salt = salt}
 	let preM = m{tam = preTAM}
 	let packedPreM = BL.toStrict $ pack preM
@@ -95,7 +95,7 @@ addTAMm m = do
 
 addTAMa :: Archive -> IO Archive
 addTAMa archive = do
-	salt <- random 64
+	salt <- getEntropy 64
 	let preTAM = def{salt = salt}
 	let preArchive = archive{tam = preTAM}
 	let packedPreArchive = BL.toStrict $ pack preArchive
