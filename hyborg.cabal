@@ -1,7 +1,7 @@
 cabal-version:       2.2
 name:                hyborg
 version:             0
-synopsis:            borgbackup clone
+synopsis:            multithreaded borgbackup clone
 license:             AGPL-3.0-only
 license-file:        LICENSE
 author:              Sergey Alirzaev
