@@ -49,12 +49,14 @@ data Command =
 
 data Options = Options
 	{ oVerbose :: Bool
+	, oDryRun :: Bool
 	, oCommand :: Command
 	} deriving (Eq, Show)
 
 optParser :: Parser Options
 optParser = Options
 	<$> switch (short 'v' <> long "verbose" <> long "info")
+	<*> switch (long "dry-run" <> help "do not connect to the daemon, only test the (FIXME non-lazy part of the) archiving routine")
 	<*> commandParser
 
 commandParser :: Parser Command
@@ -76,14 +78,16 @@ main = do
 	opts <- execParser $ info optParser (progDesc "borgbackup-compatible backup tool")
 	processCommand opts $ oCommand opts
 
-connectToRepo :: ByteString -> Bool -> IO (RPCHandle, ID Repository, Manifest)
-connectToRepo repoPath rw = do
+connectToRepo :: ByteString -> Bool -> Bool -> IO (RPCHandle, ID Repository, Manifest)
+connectToRepo repoPath rw False = do
 	conn <- openRPC
-	negotiate conn
 	id <- open conn repoPath rw
 	manifestData <- get conn repoManifest
 	manifest <- readManifest manifestData
 	pure (conn, id, manifest)
+connectToRepo repoPath rw True = do
+	conn <- openPseudoRPC
+	pure (conn, coerce repoManifest, def)
 
 parseAddress :: ByteString -> (ByteString, ByteString)
 parseAddress = (\(repo, archive) -> (repo, B.drop 2 archive)) . B.breakSubstring "::"
@@ -164,16 +168,16 @@ archiveFiles conn cmd chunkerSettings encryption filenames = do
 processCommand :: Options -> Command -> IO ()
 processCommand opts Info {..} = do
 	let (repoPath, archiveName) = parseAddress iRepo
-	(conn, _, manifest) <- connectToRepo repoPath False
+	(conn, _, manifest) <- connectToRepo repoPath False opts.oDryRun
 	getArchives conn manifest
 processCommand opts c@Create {..} = do
 	let (repoPath, archiveName) = parseAddress cArchive
 	when (B.null repoPath) $ error "no repository specified"
 	when (B.null archiveName) $ error "no archive name specified"
-	(conn, id, manifest) <- connectToRepo repoPath True
+	(conn, id, manifest) <- connectToRepo repoPath True opts.oDryRun
 	when (M.member archiveName manifest.archives) $ error $ "archive " ++ toString archiveName ++ " already exists"
 	timeBegin <- UTC.getCurrentTime
-	fileCache <- readCache id
+	--fileCache <- readCache id
 	let chunkerSettings = def	-- TODO settable chunker settings
 	let encryption = plaintext	-- TODO other encryption schemes
 	archiveItemIDs <- archiveFiles conn c chunkerSettings encryption cFiles
@@ -204,7 +208,7 @@ processCommand opts c@Create {..} = do
 	commit conn
 processCommand opts List {..} = do
 	let (repoPath, archiveName) = parseAddress lRepoArchive
-	(conn, _, manifest) <- connectToRepo repoPath False
+	(conn, _, manifest) <- connectToRepo repoPath False opts.oDryRun
 	if (B.null archiveName) then do
 		-- list all the archives present in the repo
 		let archs = listArchives manifest

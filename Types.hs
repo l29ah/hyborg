@@ -117,6 +117,8 @@ instance HasDatatypeInfo Manifest
 instance MessagePack Manifest where
 	toObject = mapBin2Str . gToObjectMap
 	fromObject = gFromObjectMap
+instance Default Manifest where
+	def = Manifest def (UTCTime (toEnum 0) 0) def ObjectNil def def
 
 data DescribedChunk = DescribedChunk
 	{ chunkID :: ID DataChunk

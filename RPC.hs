@@ -1,5 +1,14 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
-module RPC where
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, Strict #-}
+module RPC
+	( RPCHandle
+	, repoManifest
+	, openRPC
+	, openPseudoRPC
+	, open
+	, get
+	, put
+	, commit
+	) where
 
 import Conduit
 import Control.Concurrent
@@ -44,7 +53,10 @@ data RPCOldResponse a = RPCOldResponse
 	} deriving (Show, Generic)
 instance (MessagePack a) => MessagePack (RPCOldResponse a)
 
-type RPCHandle = (TBQueue Object, TBQueue Object)
+data RPCHandle = RPCHandle
+	{ toBorg :: TBQueue Object
+	, fromBorg :: Maybe (TBQueue Object)
+	}
 
 openRPC :: IO RPCHandle
 openRPC = do
@@ -58,30 +70,40 @@ openRPC = do
 	let outputConsumer = conduitDecode .| sinkTBQueue stdout
 	let inputProducer =  sourceTBQueue stdin .| mapC (BL.toStrict . pack)
 	forkIO $ void $ sourceProcessWithStreams cp inputProducer outputConsumer (pure ())
-	pure (stdin, stdout)
+	let rh = RPCHandle stdin $ Just stdout
+	negotiate rh
+	pure rh
 
+openPseudoRPC :: IO RPCHandle
+openPseudoRPC = do
+	let queueLength = 20
+	stdin <- newTBQueueIO queueLength
+	forkIO $ void $ runConduit $ sourceTBQueue stdin .| mapC (BL.toStrict . pack) .| sinkNull
+	pure $ RPCHandle stdin Nothing
 
 sendOldRequest :: (MessagePack a) => RPCHandle -> Text -> Map Text a -> IO ()
-sendOldRequest conn method args = atomically $ writeTBQueue (fst conn) $ toObject $ RPCOldRequest 1 0 method [args]
+sendOldRequest conn method args = atomically $ writeTBQueue (toBorg conn) $ toObject $ RPCOldRequest 1 0 method [args]
 
 receiveOldResponse :: (MessagePack a) => RPCHandle -> IO (RPCOldResponse a)
-receiveOldResponse conn = do
-	resp <- atomically $ readTBQueue $ snd conn
+receiveOldResponse (RPCHandle _ (Just fromBorg)) = do
+	resp <- atomically $ readTBQueue fromBorg
 	fromObject resp
+receiveOldResponse (RPCHandle _ Nothing) = undefined
 
 sendRequest :: (MessagePack a) => RPCHandle -> ByteString -> Map Text a -> IO ()
-sendRequest conn method args = atomically $ writeTBQueue (fst conn) $ ObjectMap
+sendRequest conn method args = atomically $ writeTBQueue (toBorg conn) $ ObjectMap
 	[ (ObjectStr "i", ObjectWord id)
 	, (ObjectStr "m", ObjectStr method)
 	, (ObjectStr "a", toObject args)
 	] where id = 0
 
 receiveResponse :: RPCHandle -> IO ByteString
-receiveResponse conn = do
-	resp <- atomically $ readTBQueue $ snd conn
+receiveResponse (RPCHandle _ (Just fromBorg)) = do
+	resp <- atomically $ readTBQueue fromBorg
 	respMap :: Map ByteString Object <- fromObject resp
 	let ObjectStr result = respMap ! ("r" :: ByteString)
 	pure result
+receiveResponse (RPCHandle _ Nothing) = pure $ B.pack $ replicate 32 0
 
 negotiate :: RPCHandle -> IO ()
 negotiate conn = do
