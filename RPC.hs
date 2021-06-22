@@ -61,8 +61,7 @@ data RPCHandle = RPCHandle
 openRPC :: IO RPCHandle
 openRPC = do
 	userRsh <- lookupEnv "BORG_RSH"
-	--let rsh = fromMaybe "ssh" userRsh
-	let rsh = fromJust userRsh
+	let rsh = fromMaybe "ssh" userRsh	-- as in borg
 	let queueLength = 20
 	stdin <- newTBQueueIO queueLength
 	stdout <- newTBQueueIO queueLength
