@@ -1,5 +1,9 @@
-{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, Strict #-}
+{-# LANGUAGE DeriveGeneric, ScopedTypeVariables, OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, Strict, CPP #-}
+#if __GLASGOW_HASKELL__ < 902
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+#else
+{-# LANGUAGE OverloadedRecordDot #-}
+#endif
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 module Types
 	( module Types.Generics
@@ -46,7 +50,7 @@ instance Show (ID a) where
 	show (ID bs) = show $ B16.encode bs
 instance ConvString (ID a) where
 	toString (ID bs) = toString $ B16.encode bs
-	fromString = ID . fst . B16.decode . fromString
+	fromString = ID . either error id . B16.decode . fromString
 instance MessagePack (ID a) where
 	fromObject (ObjectStr bs) = pure $ ID bs
 	fromObject _ = fail "wrong messagepack type for ID"

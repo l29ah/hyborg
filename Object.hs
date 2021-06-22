@@ -1,5 +1,9 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, CPP #-}
+#if __GLASGOW_HASKELL__ < 902
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+#else
+{-# LANGUAGE OverloadedRecordDot, RebindableSyntax #-}
+#endif
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 module Object where
 
@@ -20,6 +24,12 @@ import Data.Maybe
 import Data.MessagePack
 import Data.Time
 import Data.Word
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Records
+import Prelude
+-- RebindableSyntax
+import Data.String (fromString)
+#endif
 import System.Entropy
 
 import Compression
@@ -86,18 +96,18 @@ addTAMm :: Manifest -> IO Manifest
 addTAMm m = do
 	salt <- getEntropy 64
 	let preTAM = def{salt = salt}
-	let preM = m{tam = preTAM}
+	let preM = m{tam = preTAM} :: Manifest
 	let packedPreM = BL.toStrict $ pack preM
 	let context = "manifest"
 	let key = makeKey preTAM.salt context
 	let hash = hMAC key packedPreM
-	pure preM{tam = preTAM{hmac = hash}}
+	pure (preM{tam = preTAM{hmac = hash}} :: Manifest)
 
 addTAMa :: Archive -> IO Archive
 addTAMa archive = do
 	salt <- getEntropy 64
 	let preTAM = def{salt = salt}
-	let preArchive = archive{tam = preTAM}
+	let preArchive = archive{tam = preTAM} :: Archive
 	let packedPreArchive = BL.toStrict $ pack preArchive
 	let context = "manifest"
 	-- TODO let ikm = self.id_key + self.enc_key + self.enc_hmac_key,
@@ -106,7 +116,7 @@ addTAMa archive = do
 	-- let key = hkdf ikm salt info outputLength
 	let key = makeKey preTAM.salt context
 	let hash = hMAC key packedPreArchive
-	pure preArchive{tam = preTAM{hmac = hash}}
+	pure (preArchive{tam = preTAM{hmac = hash}} :: Archive)
 
 hkdf :: ByteString -> ByteString -> ByteString -> Int -> ByteString
 hkdf ikm salt info len = HKDF.expand (HKDF.extract @SHA512 salt ikm) info len

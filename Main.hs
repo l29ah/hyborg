@@ -1,5 +1,9 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables, RecordWildCards, Strict, CPP #-}
+#if __GLASGOW_HASKELL__ < 902
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+#else
+{-# LANGUAGE OverloadedRecordDot #-}
+#endif
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 
 import Control.Exception
@@ -107,9 +111,10 @@ archiveChunk conn encryption chunk = do
 	let chunkID = (coerce . encryption.hashID) strictChunk
 	let compressedChunk = (BL.toStrict . Object.encrypt encryption) chunk
 	let chunkCompressedSize = (fromIntegral . B.length) compressedChunk
+	let chunkMeta = DescribedChunk chunkID chunkUncompressedSize chunkCompressedSize
 	-- store the chunk data on the server
-	cachedPut conn (compressedChunk, chunkID)
-	pure $ DescribedChunk chunkID chunkUncompressedSize chunkCompressedSize
+	cachedPut conn (compressedChunk, chunkMeta.chunkID)
+	pure chunkMeta
 
 archiveDir conn cmd chunkerSettings encryption fn = do
 	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
