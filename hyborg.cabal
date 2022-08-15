@@ -78,7 +78,8 @@ test-suite spec
   build-depends:
                        hspec == 2.*,
                        QuickCheck ^>= 2.14.2,
-                       quickcheck-instances ^>= 0.3.25.2
+                       quickcheck-instances ^>= 0.3.25.2,
+                       bytestring ^>= 0.11
   other-modules:
                        Chunker.BuzHashSpec
                        ObjectSpec
