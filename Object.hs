@@ -16,6 +16,7 @@ import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Short (ShortByteString, toShort, fromShort)
 import Data.Coerce
 import Data.Default
 import Data.List
@@ -41,7 +42,7 @@ plaintext = CryptoMethod
 	{ cmID = 0x02
 	, cmDecrypt = id
 	, encrypt = id
-	, hashID = ID . SHA256.hash
+	, hashID = ID . toShort . SHA256.hash
 	}
 
 methods = [plaintext]
@@ -125,4 +126,4 @@ serialize :: MessagePack object => CryptoMethod -> object -> (ByteString, ID obj
 serialize encryption o =
 	let	packedObject = BL.toStrict $ pack $ toObject o
 		serializedObject = BL.toStrict $ Object.encrypt encryption $ BL.fromStrict $ packedObject
-	in (serializedObject, coerce $ encryption.hashID packedObject)
+	in (serializedObject, coerce $ encryption.hashID $ B.copy packedObject)

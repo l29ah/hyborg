@@ -14,6 +14,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Short (ShortByteString, toShort, fromShort)
 import Data.Default
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable
@@ -45,15 +46,16 @@ mapBin2Str (ObjectMap kvlist) = ObjectMap $ map (\(k, v) -> (bin2Str k, bin2Str 
 mapBin2Str x = x
 
 -- |32 bytes-long chunk identifier
-newtype ID a = ID { fromID :: ByteString } deriving (Eq, Hashable, GHC.Generic)
+newtype ID a = ID { fromID :: ShortByteString } deriving (Eq, Hashable, GHC.Generic)
 instance Show (ID a) where
-	show (ID bs) = show $ B16.encode bs
+	show (ID bs) = show $ B16.encode $ fromShort bs
 instance ConvString (ID a) where
-	toString (ID bs) = toString $ B16.encode bs
-	fromString = ID . either error id . B16.decode . fromString
+	toString (ID bs) = toString $ B16.encode $ fromShort bs
+	fromString = ID . toShort . either error id . B16.decode . fromString
 instance MessagePack (ID a) where
-	fromObject (ObjectStr bs) = pure $ ID bs
+	fromObject (ObjectStr bs) = pure $ ID $ toShort bs
 	fromObject _ = fail "wrong messagepack type for ID"
+	toObject (ID bs) = ObjectStr $ fromShort bs
 
 instance MessagePack UTCTime where
 	-- FIXME we do not serialize %Q as borg is pissed at fractions longer than 6 decimal places

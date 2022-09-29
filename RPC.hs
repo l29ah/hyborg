@@ -17,6 +17,8 @@ import Control.Exception
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Short (ShortByteString, toShort, fromShort)
+import qualified Data.ByteString.Short as BS
 import Data.Conduit.Process
 import Data.Conduit.Serialization.Binary
 import Data.Conduit.TQueue
@@ -32,7 +34,7 @@ import System.Environment
 import Types
 
 repoManifest :: ID Manifest
-repoManifest = ID $ B.pack $ replicate 32 0
+repoManifest = ID $ BS.pack $ replicate 32 0
 
 data RPCVersion = RPCVersion Word Word Word Int deriving Generic
 instance MessagePack RPCVersion
@@ -120,17 +122,17 @@ open conn path isWrite = do
 		, ("exclusive", ObjectBool isWrite)
 		]
 	resp <- receiveResponse conn
-	pure $ ID resp
+	pure $ ID $ toShort resp
 
 get :: RPCHandle -> ID a -> IO ByteString
-get conn id = assert (B.length (fromID id) == 32) $ do
-	sendRequest conn "get" $ M.fromList [("id", ObjectStr $ fromID id)]
+get conn id = assert (B.length (fromShort $ fromID id) == 32) $ do
+	sendRequest conn "get" $ M.fromList [("id", ObjectStr $ fromShort $ fromID id)]
 	receiveResponse conn
 
 put :: RPCHandle -> ID a -> ByteString -> IO ()
-put conn id dat = assert (B.length (fromID id) == 32) $ do
+put conn id dat = assert (B.length (fromShort $ fromID id) == 32) $ do
 	sendRequest conn "put" $ M.fromList
-		[ ("id", ObjectStr $ fromID id)
+		[ ("id", ObjectStr $ fromShort $ fromID id)
 		, ("data", ObjectStr dat)
 		, ("wait", ObjectBool True)
 		]
