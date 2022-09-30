@@ -20,11 +20,18 @@ byteString1M	= genByteString 1000000
 byteString10M	= genByteString 10000000
 byteString10MS	= genByteStringS 10000000
 
+fac :: Integer -> Integer
+fac n = product [1..n]
+
 main = do
 	putStrLn "preheating the CPU"
 	deepseq ((map $ buzhash borgLookupTable) $ replicate 40 byteString10M) $ pure ()
 	defaultMain
-		[ bgroup "buzhash"
+		[ bgroup "fac"
+			[ bench "single threaded" $ nf (map fac) $ replicate 5 50000
+			, bench "5 threads" $ nf (threadify 5 fac) 50000
+			]
+		, bgroup "buzhash"
 			[ bench "5x10MB" $ nf (map $ buzhash borgLookupTable) $ replicate 5 byteString10M
 			, bench "5x10MB via 5 threads" $ nf (threadify 5 $ buzhash borgLookupTable) byteString10M
 			]
