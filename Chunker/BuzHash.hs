@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module Chunker.BuzHash where
 
+-- about 20% faster than Data.Vector.Unboxed-based
 import Data.Array.Base
 import Data.Bits
 import qualified Data.ByteString.Lazy as BL
@@ -53,6 +54,7 @@ seededBorgLookupTable seed = amap (xor seed) borgLookupTable
 -- `xor`ed into the hash.
 updater :: LookupTable -> Word8 -> Int -> Word32
 updater !lut !byte !pos = rotateL (lut `unsafeAt` fromIntegral byte) pos
+{-# INLINE updater #-}
 
 -- | Strict, packed accumulator for `buzhash`. This speeds up the function by
 -- a factor of four.
@@ -66,7 +68,6 @@ buzhash lut dat =
 				(Acc1 0 (fromIntegral (BL.length dat) - 1))
 				dat
 	in result
-{-# INLINE buzhash #-}
 
 buzhashUpdate :: LookupTable -> Word32 -> Word8 -> Word8 -> Int -> Word32
 buzhashUpdate lut sum remove add len = rotateL sum 1 `xor` updater lut remove len `xor` updater lut add 0
