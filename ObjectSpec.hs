@@ -11,6 +11,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
 import Test.Hspec
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
 
 import Object
@@ -23,7 +24,7 @@ b16 = fromRight undefined . B16.decode
 spec :: Spec
 spec = do
 	describe "plaintext crypto (and lz4)" $ do
-		it "decrypt . encrypt == id" $ property $
+		modifyMaxSuccess (const 10000) $ it "decrypt . encrypt == id" $ property $
 			\s -> (decrypt $ BL.toStrict $ encrypt plaintext s) `shouldBe` Just (BL.toStrict s)
 		it "decrypt . encrypt == id, a long hardcoded string" $ do
 			(decrypt $ BL.toStrict $ encrypt plaintext str) `shouldBe` Just (BL.toStrict str)
