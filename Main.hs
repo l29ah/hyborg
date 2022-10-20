@@ -6,6 +6,8 @@
 #endif
 {-# LANGUAGE DuplicateRecordFields, TypeApplications, FlexibleContexts, DataKinds, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, UndecidableInstances, GADTs #-}
 
+import Control.Concurrent
+import Control.Concurrent.ParallelIO.Local
 import Control.Exception
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -116,20 +118,22 @@ archiveChunk conn encryption chunk = do
 	cachedPut conn (compressedChunk, chunkMeta.chunkID)
 	pure chunkMeta
 
-archiveDir conn cmd chunkerSettings encryption fn = do
+archiveDir conn cmd chunkerSettings encryption fn tg = do
 	-- TODO maybe fdreaddir after https://github.com/haskell/unix/pull/110 is in
 	files <- listDirectory fn
-	archiveFiles conn cmd chunkerSettings encryption $ map (\file -> fn ++ "/" ++ file) files
+	archiveFiles conn cmd chunkerSettings encryption (map (\file -> fn ++ "/" ++ file) files) tg
 
-archiveFiles conn cmd chunkerSettings encryption filenames = do
-	-- TODO parallelism
-	archiveItemIDs <- mapM (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+mapMTasks tg fun list = parallel tg $ map fun list
+
+archiveFiles conn cmd chunkerSettings encryption filenames tg = do
+	archiveItemIDs <- mapMTasks tg (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
 		status <- getSymbolicLinkStatus fn
 		when (cmd.cList) $ putStrLn $ "A " ++ fn
 		-- |archive a chunked directory entry
 		let	archiveEntry :: [BL.ByteString] -> Maybe FilePath -> IO (ID ArchiveItem)
 			archiveEntry chunks maybeSource = do
 				-- store the file data on the server
+				-- TODO check if parallelism makes sense here
 				describedChunks <- mapM (archiveChunk conn encryption) chunks
 
 				let gid = fileGroup status
@@ -154,7 +158,7 @@ archiveFiles conn cmd chunkerSettings encryption filenames = do
 				pure $ coerce archiveItemID
 		if isDirectory status then do
 			-- archive the directory contents
-			contents <- archiveDir conn cmd chunkerSettings encryption fn
+			contents <- archiveDir conn cmd chunkerSettings encryption fn tg
 			-- and then the directory itself
 			directory <- archiveEntry [] Nothing
 			pure $ directory:contents
@@ -185,7 +189,8 @@ processCommand opts c@Create {..} = do
 	--fileCache <- readCache id
 	let chunkerSettings = def	-- TODO settable chunker settings
 	let encryption = plaintext	-- TODO other encryption schemes
-	archiveItemIDs <- archiveFiles conn c chunkerSettings encryption cFiles
+	nproc <- getNumCapabilities
+	archiveItemIDs <- withPool nproc $ archiveFiles conn c chunkerSettings encryption cFiles	-- TODO user-settable number of threads
 	timeEnd <- UTC.getCurrentTime
 	let arch = Archive
 		{ chunkerParams = (fromIntegral chunkerSettings.minExp, fromIntegral chunkerSettings.maxExp, fromIntegral chunkerSettings.maskBits, fromIntegral chunkerSettings.windowSize)
