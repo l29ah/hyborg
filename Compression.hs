@@ -19,6 +19,7 @@ decompress d = let (compressionType, compressedData) = B.splitAt 2 d in
 	-- src/borg/compress.pyx
 	case B.unpack compressionType of
 		[1, 0] -> lz4Decompress compressedData
+		_ -> error $ "Unknown compression type: " ++ show compressionType
 
 -- FIXME sane allocation logic
 lz4Decompress :: ByteString -> ByteString
