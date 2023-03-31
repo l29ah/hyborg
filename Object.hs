@@ -15,6 +15,7 @@ import qualified Crypto.MAC.HMAC as HMAC
 import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Short (ShortByteString, toShort, fromShort)
 import Data.Coerce
@@ -32,10 +33,14 @@ import Prelude
 import Data.String (fromString)
 #endif
 import System.Entropy
+import System.Posix.Types
 
 import Compression
 import RPC
 import Types
+
+-- as seen in hardlink_id_from_inode
+hardlinkIdFromInode (CIno inode) (CDev dev) = SHA256.hash $ BL.toStrict $ toLazyByteString $ word64Dec inode <> shortByteString "/" <> word64Dec dev
 
 plaintext :: CryptoMethod
 plaintext = CryptoMethod

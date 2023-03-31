@@ -142,7 +142,7 @@ data ArchiveItem = ArchiveItem
 	, uid :: Word32
 	, user :: ByteString
 	, mode :: Word32
-	, hardlinkMaster :: Maybe Bool
+	, hlid :: Maybe ByteString
 	, path :: ByteString
 	, size :: Word64
 	, chunks :: Maybe [DescribedChunk]
@@ -167,7 +167,7 @@ instance MessagePack ArchiveItem where
 			<*> look "uid"
 			<*> look "user"
 			<*> look "mode"
-			<*> mbLook "hardlink_master"
+			<*> mbLook "hlid"
 			<*> look "path"
 			<*> justLook "size" 0
 			<*> mbLook "chunks"
@@ -181,7 +181,7 @@ instance MessagePack ArchiveItem where
 		, ("user", toObject ai.user)
 		, ("group", toObject ai.group)
 		, ("mode", toObject ai.mode)
-		, ("hardlink_master", toObject ai.hardlinkMaster)
+		, ("hlid", toObject ai.hlid)
 		, ("path", toObject ai.path)
 		, ("size", toObject ai.size)
 		] ++ maybe [] (\ch -> pure ("chunks", toObject ch)) ai.chunks

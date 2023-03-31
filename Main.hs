@@ -140,6 +140,7 @@ archiveFiles conn cmd chunkerSettings encryption filenames tg = do
 				group <- groupName `fmap` (getGroupEntryForID $ coerce gid)
 				let uid = fileOwner status
 				owner <- userName `fmap` (getUserEntryForID $ coerce uid)
+				let hlid = if (linkCount status > 1) then Just $ hardlinkIdFromInode (fileID status) (deviceID status) else Nothing
 
 				let ai = ArchiveItem
 					(toNanoSeconds $ accessTime status)
@@ -148,7 +149,7 @@ archiveFiles conn cmd chunkerSettings encryption filenames tg = do
 					(fromIntegral gid) (fromString group)
 					(fromIntegral uid) (fromString owner)
 					(coerce $ fileMode status)
-					Nothing
+					hlid
 					(fromString $ stripSlash fn)
 					(fromIntegral $ fileSize status)
 					(if null describedChunks then Nothing else Just describedChunks)
