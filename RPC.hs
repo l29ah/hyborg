@@ -103,8 +103,10 @@ receiveResponse :: RPCHandle -> IO ByteString
 receiveResponse (RPCHandle _ (Just fromBorg)) = do
 	resp <- atomically $ readTBQueue fromBorg
 	respMap :: Map ByteString Object <- fromObject resp
-	let ObjectStr result = respMap ! ("r" :: ByteString)
-	pure result
+	let result = respMap ! ("r" :: ByteString)
+	pure $ case result of
+		~(ObjectStr res) -> res
+		_ -> error $ "Unexpected response received from the remote borg: " ++ show respMap
 receiveResponse (RPCHandle _ Nothing) = pure $ B.pack $ replicate 32 0
 
 negotiate :: RPCHandle -> IO ()
