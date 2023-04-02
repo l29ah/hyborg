@@ -22,6 +22,9 @@ cabal run hyborg:hyborg -- --help
 nix-shell --run 'hyborg --help'
 ```
 
+## Known limitations
+hyborg can only back up hardlinks in borg-2.0 format, the earlier borg versions extract hardlinks as separate files.
+
 ## License
 
 [GNU AGPLv3](LICENSE)
