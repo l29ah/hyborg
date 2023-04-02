@@ -86,7 +86,7 @@ main = do
 
 connectToRepo :: ByteString -> Bool -> Bool -> IO (RPCHandle, ID Repository, Manifest)
 connectToRepo repoPath rw False = do
-	conn <- openRPC
+	conn <- openRPC repoPath
 	id <- open conn repoPath rw
 	manifestData <- get conn repoManifest
 	manifest <- readManifest manifestData

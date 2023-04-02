@@ -16,6 +16,7 @@ import Control.Concurrent.STM
 import Control.Exception
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as BC8
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Short (ShortByteString, toShort, fromShort)
 import qualified Data.ByteString.Short as BS
@@ -29,6 +30,7 @@ import Data.Maybe
 import Data.MessagePack
 import Data.Text (Text)
 import GHC.Generics
+import qualified ShellWords
 import System.Environment
 
 import Orphans
@@ -61,14 +63,28 @@ data RPCHandle = RPCHandle
 	, fromBorg :: Maybe (TBQueue Object)
 	}
 
-openRPC :: IO RPCHandle
-openRPC = do
+parseRepoPath :: ByteString -> (Maybe String, String)
+parseRepoPath repoPath =
+	let (hostPart, pathPart) = BC8.span (/= ':') repoPath in
+	if B.null pathPart then (Nothing, BC8.unpack hostPart) else (Just $ BC8.unpack hostPart, tail $ BC8.unpack pathPart)
+
+openRPC :: ByteString -> IO RPCHandle
+openRPC repoPath = do
 	userRsh <- lookupEnv "BORG_RSH"
-	let rsh = fromMaybe "ssh" userRsh	-- as in borg
+	userRemotePath <- lookupEnv "BORG_REMOTE_PATH"
+	-- BORG_RSH use in borg utilizes "shell-like" parsing but no actual shell calls
+	let Right (rsh:args) = ShellWords.parse $ fromMaybe "ssh" userRsh
+	let remotePath = fromMaybe "borg" userRemotePath
+	let (mbHost, path) = parseRepoPath repoPath
+	let borgCmdline = "serve" : "--restrict-to-path" : path : []
+	let cp = maybe
+		(proc remotePath borgCmdline)
+		(\host -> proc rsh (args ++ host : remotePath : borgCmdline))
+		mbHost
+
 	let queueLength = 20
 	stdin <- newTBQueueIO queueLength
 	stdout <- newTBQueueIO queueLength
-	let cp = (shell rsh) { std_err = Inherit }
 	let outputConsumer = conduitDecode .| sinkTBQueue stdout
 	let inputProducer =  sourceTBQueue stdin .| mapC (BL.toStrict . pack)
 	forkIO $ void $ sourceProcessWithIOStreams cp inputProducer outputConsumer
