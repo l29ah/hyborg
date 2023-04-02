@@ -6,7 +6,15 @@
 
 ### Cabal
 
-**TODO** …
+Install:
+```sh
+cabal install
+```
+
+Or run in-place:
+```sh
+cabal run hyborg:hyborg -- --help
+```
 
 ### Nix
 
