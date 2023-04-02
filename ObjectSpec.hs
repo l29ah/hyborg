@@ -10,6 +10,7 @@ import Test.QuickCheck.Instances.ByteString ()
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
+import System.Posix.Types
 import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
@@ -62,3 +63,6 @@ spec = do
 			let info = B.empty
 			let l = 42
 			hkdf ikm salt info l `shouldBe` (b16 "1407d46013d98bc6decefcfee55f0f90b0c7f63d68eb1a80eaf07e953cfc0a3a5240a155d6e4daa965bb")
+	describe "hardlinkIdFromInode" $ do
+		it "compatible with borg impl" $ do
+			hardlinkIdFromInode (CIno 666) (CDev 1313) `shouldBe` (b16 "5f98d5324dc717afba63ae30ad20d7af3f5da735b3214bbb74497baaa287a4fe")
