@@ -181,10 +181,11 @@ instance MessagePack ArchiveItem where
 		, ("user", toObject ai.user)
 		, ("group", toObject ai.group)
 		, ("mode", toObject ai.mode)
-		, ("hlid", toObject ai.hlid)
 		, ("path", toObject ai.path)
 		, ("size", toObject ai.size)
-		] ++ maybe [] (\ch -> pure ("chunks", toObject ch)) ai.chunks
+		]
+		++ maybe [] (\hi -> pure ("hlid", toObject hi)) ai.hlid
+		++ maybe [] (\ch -> pure ("chunks", toObject ch)) ai.chunks
 		++ maybe [] (\so -> pure ("source", toObject so)) ai.source
 
 newtype DataChunk = DataChunk Void
