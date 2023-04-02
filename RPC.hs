@@ -31,6 +31,7 @@ import Data.Text (Text)
 import GHC.Generics
 import System.Environment
 
+import Orphans
 import Types
 
 repoManifest :: ID Manifest
@@ -70,7 +71,7 @@ openRPC = do
 	let cp = (shell rsh) { std_err = Inherit }
 	let outputConsumer = conduitDecode .| sinkTBQueue stdout
 	let inputProducer =  sourceTBQueue stdin .| mapC (BL.toStrict . pack)
-	forkIO $ void $ sourceProcessWithStreams cp inputProducer outputConsumer (pure ())
+	forkIO $ void $ sourceProcessWithIOStreams cp inputProducer outputConsumer
 	let rh = RPCHandle stdin $ Just stdout
 	negotiate rh
 	pure rh
