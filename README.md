@@ -23,7 +23,10 @@ nix-shell --run 'hyborg --help'
 ```
 
 ## Known limitations
-hyborg can only back up hardlinks in borg-2.0 format, the earlier borg versions extract hardlinks as separate files.
+
+* can only back up hardlinks in borg-2.0 format, the earlier borg versions extract hardlinks as separate files
+* no proper encryption yet
+* no XATTRs and POSIX ACLs backed up yet
 
 ## License
 
