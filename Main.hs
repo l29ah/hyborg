@@ -126,7 +126,7 @@ archiveDir conn cmd chunkerSettings encryption fn tg = do
 mapMTasks tg fun list = parallel tg $ map fun list
 
 archiveFiles conn cmd chunkerSettings encryption filenames tg = do
-	archiveItemIDs <- mapMTasks tg (\fn -> bracket (openFd fn ReadOnly Nothing defaultFileFlags) closeFd $ \fd -> do
+	archiveItemIDs <- mapMTasks tg (\fn -> bracket (openFd fn ReadOnly defaultFileFlags) closeFd $ \fd -> do
 		status <- getSymbolicLinkStatus fn
 		when (cmd.cList) $ putStrLn $ "A " ++ fn
 		-- |archive a chunked directory entry
